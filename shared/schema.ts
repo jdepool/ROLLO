@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, numeric, timestamp, boolean, date } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, numeric, timestamp, boolean, date, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ export const warehouses = pgTable("warehouses", {
   storeId: integer("store_id").notNull().references(() => stores.id),
   name: text("name").notNull(),
   location: text("location"),
+  isMain: boolean("is_main").default(false),
 });
 
 export const productCategories = pgTable("product_categories", {
@@ -68,6 +69,30 @@ export const inventoryMovements = pgTable("inventory_movements", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  invoiceNumber: text("invoice_number"),
+  supplierName: text("supplier_name"),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  warehouseId: integer("warehouse_id").references(() => warehouses.id),
+  subtotal: numeric("subtotal"),
+  tax: numeric("tax"),
+  total: numeric("total"),
+  status: text("status").notNull().default("draft"),
+  imageData: text("image_data"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  purchaseOrderId: integer("purchase_order_id").notNull().references(() => purchaseOrders.id),
+  productName: text("product_name").notNull(),
+  productId: integer("product_id").references(() => products.id),
+  quantity: numeric("quantity").notNull(),
+  unitPrice: numeric("unit_price").notNull(),
+  totalPrice: numeric("total_price").notNull(),
+});
+
 export const insertStoreSchema = createInsertSchema(stores).omit({ id: true });
 export const insertWarehouseSchema = createInsertSchema(warehouses).omit({ id: true });
 export const insertCategorySchema = createInsertSchema(productCategories).omit({ id: true });
@@ -75,6 +100,8 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: tru
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
 export const insertInventorySchema = createInsertSchema(inventory).omit({ id: true });
 export const insertMovementSchema = createInsertSchema(inventoryMovements).omit({ id: true, createdAt: true });
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({ id: true, createdAt: true });
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({ id: true });
 
 export type Store = typeof stores.$inferSelect;
 export type InsertStore = z.infer<typeof insertStoreSchema>;
@@ -90,6 +117,10 @@ export type Inventory = typeof inventory.$inferSelect;
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
 export type InventoryMovement = typeof inventoryMovements.$inferSelect;
 export type InsertMovement = z.infer<typeof insertMovementSchema>;
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
+export type InsertPurchaseOrderItem = z.infer<typeof insertPurchaseOrderItemSchema>;
 
 export type InventoryWithDetails = Inventory & {
   productName: string;
@@ -120,3 +151,10 @@ export type MovementWithDetails = InventoryMovement & {
   unit: string;
   warehouseName: string | null;
 };
+
+export type PurchaseOrderWithItems = PurchaseOrder & {
+  items: PurchaseOrderItem[];
+  warehouseName?: string | null;
+};
+
+export * from "./models/chat";

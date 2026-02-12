@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Warehouse, MapPin, Store } from "lucide-react";
+import { Plus, Warehouse, MapPin, Store, Star } from "lucide-react";
 import type { Warehouse as WarehouseType, Store as StoreType } from "@shared/schema";
 
 function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -91,17 +93,23 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [storeId, setStoreId] = useState("");
+  const [isMain, setIsMain] = useState(false);
   const { toast } = useToast();
 
   const { data: stores } = useQuery<StoreType[]>({ queryKey: ["/api/stores"] });
 
   const mutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/warehouses", {
+      const result = await apiRequest("POST", "/api/warehouses", {
         name,
         location: location || null,
         storeId: Number(storeId),
+        isMain,
       });
+      if (isMain) {
+        const wh = await result.json();
+        await apiRequest("PATCH", `/api/warehouses/${wh.id}/set-main`);
+      }
     },
     onSuccess: () => {
       toast({ title: "Warehouse created" });
@@ -109,6 +117,7 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
       setName("");
       setLocation("");
       setStoreId("");
+      setIsMain(false);
       onSuccess();
     },
     onError: (err: Error) => {
@@ -150,6 +159,15 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
             <Label>Location</Label>
             <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional" data-testid="input-warehouse-location" />
           </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="is-main"
+              checked={isMain}
+              onCheckedChange={(checked) => setIsMain(checked === true)}
+              data-testid="checkbox-is-main"
+            />
+            <Label htmlFor="is-main" className="text-sm">Set as main receiving warehouse</Label>
+          </div>
           <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || !storeId || mutation.isPending} data-testid="button-submit-warehouse">
             {mutation.isPending ? "Creating..." : "Create Warehouse"}
           </Button>
@@ -165,6 +183,17 @@ export default function WarehousesPage() {
   });
   const { data: warehouses, isLoading: warehousesLoading } = useQuery<(WarehouseType & { storeName?: string })[]>({
     queryKey: ["/api/warehouses"],
+  });
+  const { toast } = useToast();
+
+  const setMainMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("PATCH", `/api/warehouses/${id}/set-main`);
+    },
+    onSuccess: () => {
+      toast({ title: "Main warehouse updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+    },
   });
 
   const invalidate = () => {
@@ -226,19 +255,41 @@ export default function WarehousesPage() {
                       {storeWarehouses.map((wh) => (
                         <div
                           key={wh.id}
-                          className="flex items-center gap-3 p-3 rounded-md bg-muted/40"
+                          className="flex items-center justify-between gap-3 p-3 rounded-md bg-muted/40"
                           data-testid={`item-warehouse-${wh.id}`}
                         >
-                          <Warehouse className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{wh.name}</p>
-                            {wh.location && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {wh.location}
-                              </p>
-                            )}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Warehouse className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-medium truncate">{wh.name}</p>
+                                {(wh as any).isMain && (
+                                  <Badge variant="secondary" className="text-[10px] gap-1">
+                                    <Star className="w-3 h-3" />
+                                    Main
+                                  </Badge>
+                                )}
+                              </div>
+                              {wh.location && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {wh.location}
+                                </p>
+                              )}
+                            </div>
                           </div>
+                          {!(wh as any).isMain && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs flex-shrink-0"
+                              onClick={() => setMainMutation.mutate(wh.id)}
+                              disabled={setMainMutation.isPending}
+                              data-testid={`button-set-main-${wh.id}`}
+                            >
+                              Set Main
+                            </Button>
+                          )}
                         </div>
                       ))}
                     </div>

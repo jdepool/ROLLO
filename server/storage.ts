@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
   stores, warehouses, productCategories, suppliers, products, inventory, inventoryMovements,
+  purchaseOrders, purchaseOrderItems,
   type Store, type InsertStore,
   type Warehouse, type InsertWarehouse,
   type ProductCategory, type InsertCategory,
@@ -11,6 +12,9 @@ import {
   type Inventory, type InsertInventory,
   type InventoryMovement, type InsertMovement,
   type InventoryWithDetails, type StockSummary, type MovementWithDetails,
+  type PurchaseOrder, type InsertPurchaseOrder,
+  type PurchaseOrderItem, type InsertPurchaseOrderItem,
+  type PurchaseOrderWithItems,
 } from "@shared/schema";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -19,13 +23,14 @@ export const db = drizzle(pool);
 export interface IStorage {
   getStores(): Promise<Store[]>;
   createStore(store: InsertStore): Promise<Store>;
-  getWarehouses(): Promise<(Warehouse & { storeName?: string })[]>;
+  getWarehouses(): Promise<(Warehouse & { storeName?: string | null })[]>;
   createWarehouse(warehouse: InsertWarehouse): Promise<Warehouse>;
+  getMainWarehouse(): Promise<(Warehouse & { storeName?: string | null }) | null>;
   getCategories(): Promise<ProductCategory[]>;
   createCategory(category: InsertCategory): Promise<ProductCategory>;
   getSuppliers(): Promise<Supplier[]>;
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
-  getProducts(): Promise<(Product & { categoryName?: string; supplierName?: string })[]>;
+  getProducts(): Promise<(Product & { categoryName?: string | null; supplierName?: string | null })[]>;
   createProduct(product: InsertProduct): Promise<Product>;
   getInventory(filters?: { warehouseId?: number; lowStock?: boolean }): Promise<InventoryWithDetails[]>;
   getInventorySummary(): Promise<StockSummary>;
@@ -33,6 +38,12 @@ export interface IStorage {
   adjustInventory(id: number, quantity: string, reason?: string): Promise<void>;
   getMovements(limit?: number): Promise<MovementWithDetails[]>;
   createMovement(movement: InsertMovement): Promise<InventoryMovement>;
+  createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
+  getPurchaseOrders(): Promise<PurchaseOrderWithItems[]>;
+  getPurchaseOrder(id: number): Promise<PurchaseOrderWithItems | null>;
+  addPurchaseOrderItems(items: InsertPurchaseOrderItem[]): Promise<PurchaseOrderItem[]>;
+  updatePurchaseOrderStatus(id: number, status: string): Promise<void>;
+  confirmPurchaseOrder(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -52,6 +63,7 @@ export class DatabaseStorage implements IStorage {
         storeId: warehouses.storeId,
         name: warehouses.name,
         location: warehouses.location,
+        isMain: warehouses.isMain,
         storeName: stores.name,
       })
       .from(warehouses)
@@ -62,6 +74,23 @@ export class DatabaseStorage implements IStorage {
   async createWarehouse(warehouse: InsertWarehouse): Promise<Warehouse> {
     const [result] = await db.insert(warehouses).values(warehouse).returning();
     return result;
+  }
+
+  async getMainWarehouse(): Promise<(Warehouse & { storeName?: string }) | null> {
+    const rows = await db
+      .select({
+        id: warehouses.id,
+        storeId: warehouses.storeId,
+        name: warehouses.name,
+        location: warehouses.location,
+        isMain: warehouses.isMain,
+        storeName: stores.name,
+      })
+      .from(warehouses)
+      .leftJoin(stores, eq(warehouses.storeId, stores.id))
+      .where(eq(warehouses.isMain, true))
+      .limit(1);
+    return rows[0] || null;
   }
 
   async getCategories(): Promise<ProductCategory[]> {
@@ -204,6 +233,142 @@ export class DatabaseStorage implements IStorage {
   async createMovement(movement: InsertMovement): Promise<InventoryMovement> {
     const [result] = await db.insert(inventoryMovements).values(movement).returning();
     return result;
+  }
+
+  async createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder> {
+    const [result] = await db.insert(purchaseOrders).values(po).returning();
+    return result;
+  }
+
+  async getPurchaseOrders(): Promise<PurchaseOrderWithItems[]> {
+    const orders = await db
+      .select({
+        id: purchaseOrders.id,
+        invoiceNumber: purchaseOrders.invoiceNumber,
+        supplierName: purchaseOrders.supplierName,
+        supplierId: purchaseOrders.supplierId,
+        warehouseId: purchaseOrders.warehouseId,
+        subtotal: purchaseOrders.subtotal,
+        tax: purchaseOrders.tax,
+        total: purchaseOrders.total,
+        status: purchaseOrders.status,
+        imageData: purchaseOrders.imageData,
+        createdAt: purchaseOrders.createdAt,
+        warehouseName: warehouses.name,
+      })
+      .from(purchaseOrders)
+      .leftJoin(warehouses, eq(purchaseOrders.warehouseId, warehouses.id))
+      .orderBy(desc(purchaseOrders.createdAt));
+
+    const result: PurchaseOrderWithItems[] = [];
+    for (const order of orders) {
+      const items = await db
+        .select()
+        .from(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.purchaseOrderId, order.id));
+      result.push({ ...order, items });
+    }
+    return result;
+  }
+
+  async getPurchaseOrder(id: number): Promise<PurchaseOrderWithItems | null> {
+    const [order] = await db
+      .select({
+        id: purchaseOrders.id,
+        invoiceNumber: purchaseOrders.invoiceNumber,
+        supplierName: purchaseOrders.supplierName,
+        supplierId: purchaseOrders.supplierId,
+        warehouseId: purchaseOrders.warehouseId,
+        subtotal: purchaseOrders.subtotal,
+        tax: purchaseOrders.tax,
+        total: purchaseOrders.total,
+        status: purchaseOrders.status,
+        imageData: purchaseOrders.imageData,
+        createdAt: purchaseOrders.createdAt,
+        warehouseName: warehouses.name,
+      })
+      .from(purchaseOrders)
+      .leftJoin(warehouses, eq(purchaseOrders.warehouseId, warehouses.id))
+      .where(eq(purchaseOrders.id, id));
+
+    if (!order) return null;
+
+    const items = await db
+      .select()
+      .from(purchaseOrderItems)
+      .where(eq(purchaseOrderItems.purchaseOrderId, id));
+
+    return { ...order, items };
+  }
+
+  async addPurchaseOrderItems(items: InsertPurchaseOrderItem[]): Promise<PurchaseOrderItem[]> {
+    if (!items.length) return [];
+    const result = await db.insert(purchaseOrderItems).values(items).returning();
+    return result;
+  }
+
+  async updatePurchaseOrderStatus(id: number, status: string): Promise<void> {
+    await db.update(purchaseOrders).set({ status }).where(eq(purchaseOrders.id, id));
+  }
+
+  async confirmPurchaseOrder(id: number): Promise<void> {
+    const po = await this.getPurchaseOrder(id);
+    if (!po) throw new Error("Purchase order not found");
+    if (po.status === "confirmed") throw new Error("Already confirmed");
+
+    const warehouseId = po.warehouseId;
+    if (!warehouseId) throw new Error("No warehouse assigned");
+
+    for (const item of po.items) {
+      let productId = item.productId;
+
+      if (!productId) {
+        const existingProducts = await db.select().from(products).where(eq(products.name, item.productName));
+        if (existingProducts.length > 0) {
+          productId = existingProducts[0].id;
+        } else {
+          const [newProduct] = await db.insert(products).values({
+            name: item.productName,
+            unit: "unidad",
+            costPrice: item.unitPrice,
+          }).returning();
+          productId = newProduct.id;
+        }
+      }
+
+      const existingInv = await db.select().from(inventory)
+        .where(and(
+          eq(inventory.warehouseId, warehouseId),
+          eq(inventory.productId, productId)
+        ));
+
+      if (existingInv.length > 0) {
+        const newQty = Number(existingInv[0].quantity) + Number(item.quantity);
+        await db.update(inventory)
+          .set({ quantity: String(newQty), unitCost: item.unitPrice })
+          .where(eq(inventory.id, existingInv[0].id));
+      } else {
+        await db.insert(inventory).values({
+          warehouseId,
+          productId,
+          quantity: item.quantity,
+          unitCost: item.unitPrice,
+        });
+      }
+
+      await db.insert(inventoryMovements).values({
+        warehouseId,
+        productId,
+        movementType: "entrada",
+        quantity: item.quantity,
+        unitCost: item.unitPrice,
+        notes: `Purchase Order #${po.invoiceNumber || po.id}`,
+        referenceType: "purchase_order",
+        createdBy: "system",
+      });
+    }
+
+    await this.updatePurchaseOrderStatus(id, "confirmed");
   }
 }
 

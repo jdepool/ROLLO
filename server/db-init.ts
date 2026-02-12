@@ -16,7 +16,8 @@ export async function initDatabase() {
         id SERIAL PRIMARY KEY,
         store_id INTEGER NOT NULL REFERENCES stores(id),
         name TEXT NOT NULL,
-        location TEXT
+        location TEXT,
+        is_main BOOLEAN DEFAULT false
       );
 
       CREATE TABLE IF NOT EXISTS product_categories (
@@ -69,7 +70,50 @@ export async function initDatabase() {
         reference_type TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS purchase_orders (
+        id SERIAL PRIMARY KEY,
+        invoice_number TEXT,
+        supplier_name TEXT,
+        supplier_id INTEGER REFERENCES suppliers(id),
+        warehouse_id INTEGER REFERENCES warehouses(id),
+        subtotal NUMERIC,
+        tax NUMERIC,
+        total NUMERIC,
+        status TEXT NOT NULL DEFAULT 'draft',
+        image_data TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS purchase_order_items (
+        id SERIAL PRIMARY KEY,
+        purchase_order_id INTEGER NOT NULL REFERENCES purchase_orders(id),
+        product_name TEXT NOT NULL,
+        product_id INTEGER REFERENCES products(id),
+        quantity NUMERIC NOT NULL,
+        unit_price NUMERIC NOT NULL,
+        total_price NUMERIC NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS conversations (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      );
     `);
+
+    await db.execute(sql`
+      ALTER TABLE warehouses ADD COLUMN IF NOT EXISTS is_main BOOLEAN DEFAULT false;
+    `);
+
     console.log("Database tables initialized");
     await seedDatabase();
   } catch (err) {

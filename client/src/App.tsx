@@ -14,11 +14,13 @@ import ProductsPage from "@/pages/products";
 import CategoriesPage from "@/pages/categories";
 import SuppliersPage from "@/pages/suppliers";
 import WarehousesPage from "@/pages/warehouses";
+import PurchaseOrdersPage from "@/pages/purchase-orders";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/purchase-orders" component={PurchaseOrdersPage} />
       <Route path="/inventory" component={InventoryPage} />
       <Route path="/movements" component={MovementsPage} />
       <Route path="/products" component={ProductsPage} />

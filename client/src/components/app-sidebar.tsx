@@ -9,6 +9,7 @@ import {
   ArrowRightLeft,
   Moon,
   Sun,
+  FileText,
 } from "lucide-react";
 import rolloLogo from "@assets/rollo_logo_circle_(1)_1770856818644.png";
 import {
@@ -28,6 +29,7 @@ import { useTheme } from "@/components/theme-provider";
 
 const mainNav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Purchase Orders", url: "/purchase-orders", icon: FileText },
   { title: "Inventory", url: "/inventory", icon: Boxes },
   { title: "Movements", url: "/movements", icon: ArrowRightLeft },
 ];
