@@ -91,8 +91,10 @@ export async function initDatabase() {
         product_name TEXT NOT NULL,
         product_id INTEGER REFERENCES products(id),
         quantity NUMERIC NOT NULL,
+        actual_qty NUMERIC,
         unit_price NUMERIC NOT NULL,
-        total_price NUMERIC NOT NULL
+        total_price NUMERIC NOT NULL,
+        verified BOOLEAN DEFAULT FALSE
       );
 
       CREATE TABLE IF NOT EXISTS conversations (

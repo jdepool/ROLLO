@@ -313,8 +313,10 @@ Rules:
           productName: item.productName,
           productId: item.productId || null,
           quantity: String(item.quantity),
+          actualQty: item.actualQty != null ? String(item.actualQty) : String(item.quantity),
           unitPrice: String(item.unitPrice),
           totalPrice: String(item.totalPrice),
+          verified: item.verified || false,
         }));
         await storage.addPurchaseOrderItems(itemsToInsert);
       }

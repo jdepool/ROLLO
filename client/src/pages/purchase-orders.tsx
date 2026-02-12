@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
@@ -31,6 +32,8 @@ type ExtractedItem = {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  actualQty: number;
+  verified: boolean;
 };
 
 type ExtractedData = {
@@ -68,7 +71,15 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
       return res.json();
     },
     onSuccess: (data: ExtractedData) => {
-      setExtractedData(data);
+      const withDefaults = {
+        ...data,
+        items: data.items.map((item) => ({
+          ...item,
+          actualQty: item.quantity,
+          verified: false,
+        })),
+      };
+      setExtractedData(withDefaults);
       setStep("review");
     },
     onError: (err: Error) => {
@@ -90,7 +101,14 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
         subtotal: extractedData.subtotal,
         tax: extractedData.tax,
         total: extractedData.total,
-        items: extractedData.items,
+        items: extractedData.items.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          actualQty: item.actualQty,
+          verified: item.verified,
+        })),
         imageData: imageBase64,
       });
     },
@@ -288,50 +306,86 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
 
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground font-medium">Line Items ({extractedData.items.length})</Label>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {extractedData.items.map((item, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-end" data-testid={`po-item-${i}`}>
-                      <div className="col-span-5 space-y-1">
-                        {i === 0 && <Label className="text-[10px] text-muted-foreground">Product</Label>}
-                        <Input
-                          value={item.productName}
-                          onChange={(e) => updateItem(i, "productName", e.target.value)}
-                          data-testid={`input-item-name-${i}`}
-                        />
+                    <div key={i} className="space-y-2 p-3 rounded-md bg-muted/30" data-testid={`po-item-${i}`}>
+                      <div className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-4 space-y-1">
+                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Product</Label>}
+                          <Input
+                            value={item.productName}
+                            onChange={(e) => updateItem(i, "productName", e.target.value)}
+                            data-testid={`input-item-name-${i}`}
+                          />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Invoice Qty</Label>}
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(i, "quantity", e.target.value)}
+                            data-testid={`input-item-qty-${i}`}
+                          />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Unit $</Label>}
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.unitPrice}
+                            onChange={(e) => updateItem(i, "unitPrice", e.target.value)}
+                            data-testid={`input-item-price-${i}`}
+                          />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Total</Label>}
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.totalPrice}
+                            onChange={(e) => updateItem(i, "totalPrice", e.target.value)}
+                            data-testid={`input-item-total-${i}`}
+                          />
+                        </div>
+                        <div className="col-span-2 flex items-end gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => removeItem(i)} data-testid={`button-remove-item-${i}`}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="col-span-2 space-y-1">
-                        {i === 0 && <Label className="text-[10px] text-muted-foreground">Qty</Label>}
-                        <Input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => updateItem(i, "quantity", e.target.value)}
-                          data-testid={`input-item-qty-${i}`}
-                        />
-                      </div>
-                      <div className="col-span-2 space-y-1">
-                        {i === 0 && <Label className="text-[10px] text-muted-foreground">Unit $</Label>}
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.unitPrice}
-                          onChange={(e) => updateItem(i, "unitPrice", e.target.value)}
-                          data-testid={`input-item-price-${i}`}
-                        />
-                      </div>
-                      <div className="col-span-2 space-y-1">
-                        {i === 0 && <Label className="text-[10px] text-muted-foreground">Total</Label>}
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.totalPrice}
-                          onChange={(e) => updateItem(i, "totalPrice", e.target.value)}
-                          data-testid={`input-item-total-${i}`}
-                        />
-                      </div>
-                      <div className="col-span-1">
-                        <Button size="icon" variant="ghost" onClick={() => removeItem(i)} data-testid={`button-remove-item-${i}`}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`verified-${i}`}
+                            checked={item.verified}
+                            onCheckedChange={(checked) => {
+                              const items = [...extractedData.items];
+                              items[i] = { ...items[i], verified: checked === true };
+                              setExtractedData({ ...extractedData, items });
+                            }}
+                            data-testid={`checkbox-verified-${i}`}
+                          />
+                          <Label htmlFor={`verified-${i}`} className="text-xs text-muted-foreground">Verified</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs text-muted-foreground whitespace-nowrap">Actual Qty</Label>
+                          <Input
+                            type="number"
+                            className="w-24"
+                            value={item.actualQty}
+                            onChange={(e) => {
+                              const items = [...extractedData.items];
+                              items[i] = { ...items[i], actualQty: Number(e.target.value) || 0 };
+                              setExtractedData({ ...extractedData, items });
+                            }}
+                            data-testid={`input-actual-qty-${i}`}
+                          />
+                          {item.actualQty !== item.quantity && (
+                            <span className="text-xs text-destructive whitespace-nowrap">
+                              Diff: {item.actualQty - item.quantity > 0 ? "+" : ""}{item.actualQty - item.quantity}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

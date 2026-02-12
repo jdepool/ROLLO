@@ -89,8 +89,10 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   productName: text("product_name").notNull(),
   productId: integer("product_id").references(() => products.id),
   quantity: numeric("quantity").notNull(),
+  actualQty: numeric("actual_qty"),
   unitPrice: numeric("unit_price").notNull(),
   totalPrice: numeric("total_price").notNull(),
+  verified: boolean("verified").default(false),
 });
 
 export const insertStoreSchema = createInsertSchema(stores).omit({ id: true });

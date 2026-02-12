@@ -319,8 +319,16 @@ export class DatabaseStorage implements IStorage {
     const warehouseId = po.warehouseId;
     if (!warehouseId) throw new Error("No warehouse assigned");
 
+    if (po.supplierName) {
+      const existingSuppliers = await db.select().from(suppliers).where(eq(suppliers.name, po.supplierName));
+      if (existingSuppliers.length === 0) {
+        await db.insert(suppliers).values({ name: po.supplierName });
+      }
+    }
+
     for (const item of po.items) {
       let productId = item.productId;
+      const qty = item.actualQty || item.quantity;
 
       if (!productId) {
         const existingProducts = await db.select().from(products).where(eq(products.name, item.productName));
@@ -343,7 +351,7 @@ export class DatabaseStorage implements IStorage {
         ));
 
       if (existingInv.length > 0) {
-        const newQty = Number(existingInv[0].quantity) + Number(item.quantity);
+        const newQty = Number(existingInv[0].quantity) + Number(qty);
         await db.update(inventory)
           .set({ quantity: String(newQty), unitCost: item.unitPrice })
           .where(eq(inventory.id, existingInv[0].id));
@@ -351,7 +359,7 @@ export class DatabaseStorage implements IStorage {
         await db.insert(inventory).values({
           warehouseId,
           productId,
-          quantity: item.quantity,
+          quantity: qty,
           unitCost: item.unitPrice,
         });
       }
@@ -360,7 +368,7 @@ export class DatabaseStorage implements IStorage {
         warehouseId,
         productId,
         movementType: "entrada",
-        quantity: item.quantity,
+        quantity: qty,
         unitCost: item.unitPrice,
         notes: `Purchase Order #${po.invoiceNumber || po.id}`,
         referenceType: "purchase_order",
