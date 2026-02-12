@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
@@ -113,10 +113,10 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
     setOpen(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [dragging, setDragging] = useState(false);
 
+  const loadFile = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) return;
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
@@ -124,7 +124,32 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
       setImageBase64(base64);
     };
     reader.readAsDataURL(file);
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) loadFile(file);
   };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) loadFile(file);
+  }, [loadFile]);
 
   const handleScan = () => {
     if (!imageBase64) return;
@@ -173,8 +198,11 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                 </div>
               )}
               <div
-                className="border-2 border-dashed rounded-md p-8 text-center cursor-pointer"
+                className={`border-2 border-dashed rounded-md p-8 text-center cursor-pointer transition-colors ${dragging ? "border-primary bg-primary/5" : ""}`}
                 onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 data-testid="dropzone-upload"
               >
                 <input
@@ -195,7 +223,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                 ) : (
                   <div className="space-y-2">
                     <ImageIcon className="w-12 h-12 text-muted-foreground/30 mx-auto" />
-                    <p className="text-sm text-muted-foreground">Click to upload a photo of your purchase order</p>
+                    <p className="text-sm text-muted-foreground">Drag & drop or click to upload a photo of your purchase order</p>
                     <p className="text-xs text-muted-foreground/60">Supports JPG, PNG, WEBP</p>
                   </div>
                 )}
