@@ -10,6 +10,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
+import rolloLogo from "@assets/rollo_logo_circle_(1)_1770856818644.png";
 import {
   Sidebar,
   SidebarContent,
@@ -47,9 +48,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <Link href="/">
           <div className="flex items-center gap-2 cursor-pointer" data-testid="link-logo">
-            <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary">
-              <Boxes className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src={rolloLogo} alt="Rollo" className="w-9 h-9 rounded-full object-cover" />
             <div>
               <h1 className="text-base font-bold tracking-tight text-sidebar-foreground">Rollo</h1>
               <p className="text-[11px] text-sidebar-foreground/60 leading-none">Inventory Manager</p>
