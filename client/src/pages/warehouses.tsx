@@ -55,7 +55,7 @@ function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="secondary" data-testid="button-add-store">
+        <Button className="bg-[#ccdd53]" data-testid="button-add-store">
           <Plus className="w-4 h-4 mr-2" />
           Add Store
         </Button>

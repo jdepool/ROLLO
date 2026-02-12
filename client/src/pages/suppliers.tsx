@@ -51,7 +51,7 @@ function AddSupplierDialog({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button data-testid="button-add-supplier">
+        <Button className="bg-[#ccdd53]" data-testid="button-add-supplier">
           <Plus className="w-4 h-4 mr-2" />
           Add Supplier
         </Button>

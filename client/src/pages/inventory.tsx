@@ -87,7 +87,7 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button data-testid="button-add-inventory">
+        <Button className="bg-[#ccdd53]" data-testid="button-add-inventory">
           <Plus className="w-4 h-4 mr-2" />
           Add Stock
         </Button>
