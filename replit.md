@@ -57,8 +57,10 @@ Preferred communication style: Simple, everyday language.
 - `GET/POST /api/stores` — Store CRUD
 - `GET/POST /api/warehouses` — Warehouse CRUD
 - `GET/POST /api/categories` — Product category CRUD
+- `PUT/DELETE /api/categories/:id` — Update/delete category
 - `GET/POST /api/suppliers` — Supplier CRUD
 - `GET/POST /api/products` — Product CRUD
+- `POST /api/products/bulk-upload` — Bulk import products from Excel/CSV (base64 encoded, max 5MB, 1000 rows)
 - `GET/POST /api/inventory` — Inventory listing and creation
 - `GET /api/inventory/summary` — Dashboard stock summary stats
 - `PATCH /api/inventory/:id` — Adjust inventory quantity

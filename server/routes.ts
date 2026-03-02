@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { GoogleGenAI } from "@google/genai";
+import * as XLSX from "xlsx";
 import {
   insertStoreSchema,
   insertWarehouseSchema,
@@ -208,6 +209,100 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
       const result = await storage.createProduct(parsed.data);
       res.status(201).json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/products/bulk-upload", async (req, res) => {
+    try {
+      const { fileData, fileName } = req.body;
+      if (!fileData) return res.status(400).json({ error: "No file data provided" });
+
+      const ext = (fileName || "").toLowerCase().split(".").pop();
+      if (!["xlsx", "xls", "csv"].includes(ext || "")) {
+        return res.status(400).json({ error: "Formato no soportado. Use .xlsx, .xls o .csv" });
+      }
+
+      const buffer = Buffer.from(fileData, "base64");
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: "El archivo excede el límite de 5MB" });
+      }
+
+      let workbook;
+      try {
+        workbook = XLSX.read(buffer, { type: "buffer" });
+      } catch {
+        return res.status(400).json({ error: "No se pudo leer el archivo. Verifique que sea un Excel o CSV válido" });
+      }
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+      if (!rows.length) return res.status(400).json({ error: "El archivo está vacío" });
+      if (rows.length > 1000) return res.status(400).json({ error: "Máximo 1000 filas por archivo" });
+
+      const headers = Object.keys(rows[0]).map((h) => h.toLowerCase().trim());
+      const nameCol = headers.find((h) => ["nombre", "name", "producto", "product"].includes(h));
+      if (!nameCol) {
+        return res.status(400).json({
+          error: "No se encontró columna de nombre. Use: nombre, name, producto o product",
+          headers: Object.keys(rows[0]),
+        });
+      }
+
+      const origHeaders = Object.keys(rows[0]);
+      const headerMap: Record<string, string> = {};
+      origHeaders.forEach((h) => { headerMap[h.toLowerCase().trim()] = h; });
+
+      const unitCol = headers.find((h) => ["unidad", "unit"].includes(h));
+      const minStockCol = headers.find((h) => ["stock_minimo", "stock minimo", "min_stock", "minstock", "stock_min"].includes(h));
+      const costCol = headers.find((h) => ["precio", "costo", "cost", "price", "cost_price", "precio_costo"].includes(h));
+      const shelfCol = headers.find((h) => ["vida_util", "vida util", "shelf_life", "shelf_life_days", "dias"].includes(h));
+
+      const created: any[] = [];
+      const errors: { row: number; name: string; error: string }[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const productName = String(row[headerMap[nameCol!]] || "").trim();
+        if (!productName) {
+          errors.push({ row: i + 2, name: "(vacío)", error: "Nombre vacío" });
+          continue;
+        }
+
+        const productData: any = { name: productName };
+        if (unitCol) {
+          const u = String(row[headerMap[unitCol]] || "").trim().toLowerCase();
+          if (u) productData.unit = u;
+        }
+        if (minStockCol) {
+          const v = Number(row[headerMap[minStockCol]]);
+          if (!isNaN(v)) productData.minStock = String(v);
+        }
+        if (costCol) {
+          const v = Number(row[headerMap[costCol]]);
+          if (!isNaN(v)) productData.costPrice = String(v);
+        }
+        if (shelfCol) {
+          const v = Number(row[headerMap[shelfCol]]);
+          if (!isNaN(v) && v > 0) productData.shelfLifeDays = v;
+        }
+
+        const parsed = insertProductSchema.safeParse(productData);
+        if (!parsed.success) {
+          errors.push({ row: i + 2, name: productName, error: parsed.error.issues.map((e) => e.message).join(", ") });
+          continue;
+        }
+
+        try {
+          const result = await storage.createProduct(parsed.data);
+          created.push(result);
+        } catch (err: any) {
+          errors.push({ row: i + 2, name: productName, error: err.message });
+        }
+      }
+
+      res.json({ created: created.length, errors, total: rows.length });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
