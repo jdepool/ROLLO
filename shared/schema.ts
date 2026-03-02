@@ -160,4 +160,13 @@ export type PurchaseOrderWithItems = PurchaseOrder & {
   warehouseName?: string | null;
 };
 
+export type LossSummary = {
+  productId: number;
+  productName: string;
+  unit: string;
+  totalLost: number;
+  totalEntries: number;
+  lossPercentage: number;
+};
+
 export * from "./models/chat";

@@ -198,18 +198,38 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+const LOSS_REASONS = [
+  { value: "producto_expiro", label: "Producto Expiró" },
+  { value: "producto_danado", label: "Producto Dañado" },
+  { value: "accidente", label: "Accidente" },
+  { value: "otros", label: "Otros" },
+] as const;
+
 function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
   const [newQty, setNewQty] = useState(String(Number(item.quantity)));
-  const [reason, setReason] = useState("");
+  const [lossReason, setLossReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+  const [notes, setNotes] = useState("");
   const { toast } = useToast();
+
+  const currentQty = Number(item.quantity);
+  const isDecrease = Number(newQty) < currentQty;
 
   const mutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("PUT", `/api/inventory/${item.id}/adjust`, {
+      const body: Record<string, string | undefined> = {
         quantity: newQty,
-        reason,
-      });
+      };
+      if (isDecrease) {
+        body.lossReason = lossReason;
+        if (lossReason === "otros" && customReason) {
+          body.reason = customReason;
+        }
+      } else {
+        body.reason = notes || undefined;
+      }
+      await apiRequest("PUT", `/api/inventory/${item.id}/adjust`, body);
     },
     onSuccess: () => {
       toast({ title: "Stock ajustado" });
@@ -221,8 +241,18 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
     },
   });
 
+  const handleOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (v) {
+      setNewQty(String(Number(item.quantity)));
+      setLossReason("");
+      setCustomReason("");
+      setNotes("");
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="icon" variant="ghost" data-testid={`button-adjust-${item.id}`}>
           <Pencil className="w-4 h-4" />
@@ -235,7 +265,7 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Actual: {Number(item.quantity)} {item.unit}</Label>
+            <Label>Actual: {currentQty} {item.unit}</Label>
             <Input
               type="number"
               min="0"
@@ -245,20 +275,52 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
               data-testid="input-adjust-quantity"
             />
           </div>
-          <div className="space-y-2">
-            <Label>Razon</Label>
-            <Textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Razon del ajuste..."
-              className="resize-none"
-              data-testid="input-adjust-reason"
-            />
-          </div>
+          {isDecrease ? (
+            <>
+              <div className="space-y-2">
+                <Label>Razón de la merma</Label>
+                <Select value={lossReason} onValueChange={setLossReason}>
+                  <SelectTrigger data-testid="select-loss-reason">
+                    <SelectValue placeholder="Seleccionar razón" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOSS_REASONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value} data-testid={`option-loss-reason-${r.value}`}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {lossReason === "otros" && (
+                <div className="space-y-2">
+                  <Label>Especificar razón</Label>
+                  <Textarea
+                    value={customReason}
+                    onChange={(e) => setCustomReason(e.target.value)}
+                    placeholder="Describe la razón..."
+                    className="resize-none"
+                    data-testid="input-custom-loss-reason"
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Label>Notas (opcional)</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Notas del ajuste..."
+                className="resize-none"
+                data-testid="input-adjust-notes"
+              />
+            </div>
+          )}
           <Button
             className="w-full"
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || (isDecrease && !lossReason)}
             data-testid="button-submit-adjust"
           >
             {mutation.isPending ? "Guardando..." : "Guardar Ajuste"}

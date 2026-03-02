@@ -343,9 +343,18 @@ export async function registerRoutes(
   app.put("/api/inventory/:id/adjust", async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const { quantity, reason } = req.body;
-      await storage.adjustInventory(id, quantity, reason);
+      const { quantity, reason, lossReason } = req.body;
+      await storage.adjustInventory(id, quantity, reason, lossReason);
       res.json({ message: "Adjusted" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/inventory/losses", async (_req, res) => {
+    try {
+      const result = await storage.getLossSummary();
+      res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

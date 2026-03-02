@@ -15,6 +15,7 @@ import {
   type PurchaseOrder, type InsertPurchaseOrder,
   type PurchaseOrderItem, type InsertPurchaseOrderItem,
   type PurchaseOrderWithItems,
+  type LossSummary,
 } from "@shared/schema";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -41,7 +42,7 @@ export interface IStorage {
   getInventory(filters?: { warehouseId?: number; lowStock?: boolean }): Promise<InventoryWithDetails[]>;
   getInventorySummary(): Promise<StockSummary>;
   addInventory(inv: InsertInventory): Promise<Inventory>;
-  adjustInventory(id: number, quantity: string, reason?: string): Promise<void>;
+  adjustInventory(id: number, quantity: string, reason?: string, lossReason?: string): Promise<void>;
   getMovements(limit?: number): Promise<MovementWithDetails[]>;
   createMovement(movement: InsertMovement): Promise<InventoryMovement>;
   transferInventory(items: { productId: number; quantity: number }[], sourceWarehouseId: number, destWarehouseId: number): Promise<void>;
@@ -52,6 +53,7 @@ export interface IStorage {
   addPurchaseOrderItems(items: InsertPurchaseOrderItem[]): Promise<PurchaseOrderItem[]>;
   updatePurchaseOrderStatus(id: number, status: string): Promise<void>;
   confirmPurchaseOrder(id: number): Promise<void>;
+  getLossSummary(): Promise<LossSummary[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -251,19 +253,34 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async adjustInventory(id: number, quantity: string, reason?: string): Promise<void> {
+  async adjustInventory(id: number, quantity: string, reason?: string, lossReason?: string): Promise<void> {
     const [existing] = await db.select().from(inventory).where(eq(inventory.id, id));
     if (!existing) throw new Error("Inventory record not found");
 
     const diff = Number(quantity) - Number(existing.quantity);
     await db.update(inventory).set({ quantity }).where(eq(inventory.id, id));
+
+    const isLoss = diff < 0;
+    const referenceType = isLoss && lossReason ? "merma" : "manual_adjustment";
+    let notes = reason;
+    if (isLoss && lossReason) {
+      const reasonLabels: Record<string, string> = {
+        producto_expiro: "Producto Expiró",
+        producto_danado: "Producto Dañado",
+        accidente: "Accidente",
+        otros: "Otros",
+      };
+      const label = reasonLabels[lossReason] || lossReason;
+      notes = reason ? `Merma: ${label} - ${reason}` : `Merma: ${label}`;
+    }
+
     await db.insert(inventoryMovements).values({
       warehouseId: existing.warehouseId,
       productId: existing.productId,
       movementType: "ajuste",
       quantity: String(diff),
-      notes: reason,
-      referenceType: "manual_adjustment",
+      notes,
+      referenceType,
     });
   }
 
@@ -542,6 +559,40 @@ export class DatabaseStorage implements IStorage {
     }
 
     await this.updatePurchaseOrderStatus(id, "confirmed");
+  }
+
+  async getLossSummary(): Promise<LossSummary[]> {
+    const result = await db.execute(sql`
+      SELECT
+        p.id AS "productId",
+        p.name AS "productName",
+        p.unit,
+        COALESCE(ABS(SUM(CASE WHEN im.reference_type = 'merma' THEN CAST(im.quantity AS numeric) ELSE 0 END)), 0) AS "totalLost",
+        COALESCE(SUM(CASE WHEN im.movement_type = 'entrada' THEN CAST(im.quantity AS numeric) ELSE 0 END), 0) AS "totalEntries",
+        CASE
+          WHEN SUM(CASE WHEN im.movement_type = 'entrada' THEN CAST(im.quantity AS numeric) ELSE 0 END) > 0
+          THEN ROUND(
+            ABS(SUM(CASE WHEN im.reference_type = 'merma' THEN CAST(im.quantity AS numeric) ELSE 0 END))
+            / SUM(CASE WHEN im.movement_type = 'entrada' THEN CAST(im.quantity AS numeric) ELSE 0 END)
+            * 100, 2
+          )
+          ELSE 0
+        END AS "lossPercentage"
+      FROM products p
+      JOIN inventory_movements im ON im.product_id = p.id
+      WHERE im.reference_type = 'merma' OR im.movement_type = 'entrada'
+      GROUP BY p.id, p.name, p.unit
+      HAVING SUM(CASE WHEN im.reference_type = 'merma' THEN 1 ELSE 0 END) > 0
+      ORDER BY "lossPercentage" DESC
+    `);
+    return result.rows.map((row: any) => ({
+      productId: Number(row.productId),
+      productName: row.productName,
+      unit: row.unit,
+      totalLost: Number(row.totalLost),
+      totalEntries: Number(row.totalEntries),
+      lossPercentage: Number(row.lossPercentage),
+    }));
   }
 }
 

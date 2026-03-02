@@ -22,16 +22,20 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRightLeft, ArrowDown, ArrowUp, RefreshCw, Loader2, Check, Repeat2 } from "lucide-react";
-import type { MovementWithDetails, Warehouse, InventoryWithDetails } from "@shared/schema";
+import { ArrowRightLeft, ArrowDown, ArrowUp, RefreshCw, Loader2, Check, Repeat2, AlertTriangle, TrendingDown } from "lucide-react";
+import type { MovementWithDetails, Warehouse, InventoryWithDetails, LossSummary } from "@shared/schema";
 
-function MovementIcon({ type }: { type: string }) {
+function MovementIcon({ type, referenceType }: { type: string; referenceType?: string | null }) {
+  if (referenceType === "merma") return <AlertTriangle className="w-4 h-4 text-orange-500" />;
   if (type === "entrada") return <ArrowDown className="w-4 h-4 text-emerald-500" />;
   if (type === "salida") return <ArrowUp className="w-4 h-4 text-red-500" />;
   return <RefreshCw className="w-4 h-4 text-blue-500" />;
 }
 
-function MovementTypeBadge({ type }: { type: string }) {
+function MovementTypeBadge({ type, referenceType }: { type: string; referenceType?: string | null }) {
+  if (referenceType === "merma") {
+    return <Badge variant="destructive" className="text-xs">Merma</Badge>;
+  }
   const cfg: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
     entrada: { label: "Entrada", variant: "default" },
     salida: { label: "Salida", variant: "secondary" },
@@ -333,7 +337,81 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+function MermasSection() {
+  const { data: losses, isLoading } = useQuery<LossSummary[]>({
+    queryKey: ["/api/inventory/losses"],
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-5">
+          <Skeleton className="h-6 w-48 mb-4" />
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!losses?.length) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <TrendingDown className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-muted-foreground text-sm">No hay mermas registradas</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Producto</th>
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Unidad</th>
+                <th className="text-right px-5 py-3 font-medium text-muted-foreground">Total Perdido</th>
+                <th className="text-right px-5 py-3 font-medium text-muted-foreground">Total Ingresado</th>
+                <th className="text-right px-5 py-3 font-medium text-muted-foreground">% Merma</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {losses.map((loss) => (
+                <tr key={loss.productId} data-testid={`row-loss-${loss.productId}`}>
+                  <td className="px-5 py-3 font-medium">{loss.productName}</td>
+                  <td className="px-5 py-3 text-muted-foreground">{loss.unit}</td>
+                  <td className="px-5 py-3 text-right font-mono text-red-600 dark:text-red-400">
+                    {Number(loss.totalLost).toFixed(2)}
+                  </td>
+                  <td className="px-5 py-3 text-right font-mono text-muted-foreground">
+                    {Number(loss.totalEntries).toFixed(2)}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <Badge
+                      variant={Number(loss.lossPercentage) > 10 ? "destructive" : "outline"}
+                      className="font-mono"
+                      data-testid={`badge-loss-pct-${loss.productId}`}
+                    >
+                      {Number(loss.lossPercentage).toFixed(1)}%
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function MovementsPage() {
+  const [activeTab, setActiveTab] = useState<"movimientos" | "mermas">("movimientos");
   const { data: movements, isLoading } = useQuery<MovementWithDetails[]>({
     queryKey: ["/api/inventory/movements"],
   });
@@ -349,6 +427,28 @@ export default function MovementsPage() {
         </div>
         <TransferDialog onSuccess={() => {}} />
       </div>
+
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => setActiveTab("movimientos")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "movimientos" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          data-testid="tab-movimientos"
+        >
+          <ArrowRightLeft className="w-4 h-4 inline mr-1.5" />
+          Movimientos
+        </button>
+        <button
+          onClick={() => setActiveTab("mermas")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "mermas" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          data-testid="tab-mermas"
+        >
+          <TrendingDown className="w-4 h-4 inline mr-1.5" />
+          Mermas
+        </button>
+      </div>
+
+      {activeTab === "mermas" ? <MermasSection /> : (
+      <>
 
       <Card>
         <CardContent className="p-0">
@@ -385,8 +485,8 @@ export default function MovementsPage() {
                     <tr key={mov.id} data-testid={`row-movement-${mov.id}`}>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
-                          <MovementIcon type={mov.movementType} />
-                          <MovementTypeBadge type={mov.movementType} />
+                          <MovementIcon type={mov.movementType} referenceType={mov.referenceType} />
+                          <MovementTypeBadge type={mov.movementType} referenceType={mov.referenceType} />
                         </div>
                       </td>
                       <td className="px-5 py-3 font-medium">{mov.productName}</td>
@@ -421,6 +521,8 @@ export default function MovementsPage() {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }
