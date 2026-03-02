@@ -433,6 +433,103 @@ Rules:
     }
   });
 
+  app.post("/api/purchase-orders/parse-excel", async (req, res) => {
+    try {
+      const { fileData, fileName } = req.body;
+      if (!fileData) return res.status(400).json({ error: "No file data provided" });
+
+      const ext = (fileName || "").toLowerCase().split(".").pop();
+      if (!["xlsx", "xls", "csv"].includes(ext || "")) {
+        return res.status(400).json({ error: "Formato no soportado. Use .xlsx, .xls o .csv" });
+      }
+
+      const buffer = Buffer.from(fileData, "base64");
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: "El archivo excede el límite de 5MB" });
+      }
+
+      let workbook;
+      try {
+        workbook = XLSX.read(buffer, { type: "buffer" });
+      } catch {
+        return res.status(400).json({ error: "No se pudo leer el archivo. Verifique que sea un Excel o CSV válido" });
+      }
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+      if (!rows.length) return res.status(400).json({ error: "El archivo está vacío" });
+      if (rows.length > 500) return res.status(400).json({ error: "Máximo 500 articulos por orden" });
+
+      const headers = Object.keys(rows[0]).map((h) => h.toLowerCase().trim());
+      const origHeaders = Object.keys(rows[0]);
+      const headerMap: Record<string, string> = {};
+      origHeaders.forEach((h) => { headerMap[h.toLowerCase().trim()] = h; });
+
+      const nameCol = headers.find((h) => ["producto", "nombre", "name", "product", "descripcion", "articulo", "item"].includes(h));
+      if (!nameCol) {
+        return res.status(400).json({
+          error: "No se encontró columna de producto. Use: producto, nombre, name, articulo",
+          headers: origHeaders,
+        });
+      }
+
+      const qtyCol = headers.find((h) => ["cantidad", "qty", "quantity", "cant"].includes(h));
+      const priceCol = headers.find((h) => ["precio", "price", "unit_price", "precio_unitario", "p_unitario", "p.u."].includes(h));
+      const totalCol = headers.find((h) => ["total", "total_price", "monto", "importe"].includes(h));
+      const invoiceCol = headers.find((h) => ["factura", "invoice", "numero", "num_factura", "nro"].includes(h));
+      const supplierCol = headers.find((h) => ["proveedor", "supplier", "vendor"].includes(h));
+
+      let invoiceNumber: string | null = null;
+      let supplierName: string | null = null;
+
+      if (invoiceCol && rows[0][headerMap[invoiceCol]]) {
+        invoiceNumber = String(rows[0][headerMap[invoiceCol]]).trim();
+      }
+      if (supplierCol && rows[0][headerMap[supplierCol]]) {
+        supplierName = String(rows[0][headerMap[supplierCol]]).trim();
+      }
+
+      const items = [];
+      let runningTotal = 0;
+
+      for (const row of rows) {
+        const productName = String(row[headerMap[nameCol]] || "").trim();
+        if (!productName) continue;
+
+        const quantity = qtyCol ? (Number(row[headerMap[qtyCol]]) || 1) : 1;
+        const unitPrice = priceCol ? (Number(row[headerMap[priceCol]]) || 0) : 0;
+        let totalPrice = totalCol ? (Number(row[headerMap[totalCol]]) || 0) : 0;
+        if (!totalPrice && unitPrice && quantity) {
+          totalPrice = unitPrice * quantity;
+        }
+
+        runningTotal += totalPrice;
+
+        items.push({
+          productName,
+          quantity,
+          unitPrice,
+          totalPrice,
+          actualQty: quantity,
+          verified: false,
+        });
+      }
+
+      if (!items.length) return res.status(400).json({ error: "No se encontraron articulos válidos en el archivo" });
+
+      res.json({
+        invoiceNumber,
+        supplierName,
+        items,
+        subtotal: runningTotal,
+        tax: null,
+        total: runningTotal,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/purchase-orders", async (_req, res) => {
     try {
       const result = await storage.getPurchaseOrders();
