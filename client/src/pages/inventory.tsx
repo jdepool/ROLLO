@@ -286,7 +286,7 @@ export default function InventoryPage() {
 
   const filtered = inventoryItems?.filter((item) => {
     const matchSearch = !search || item.productName.toLowerCase().includes(search.toLowerCase());
-    const matchWarehouse = filterWarehouse === "all" || String(item.warehouseId) === filterWarehouse;
+    const matchWarehouse = filterWarehouse === "all" || String(item.warehouse_id) === filterWarehouse;
     const matchStatus =
       filterStatus === "all" ||
       (filterStatus === "low" && item.isLowStock) ||
