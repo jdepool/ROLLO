@@ -28,17 +28,17 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 
 const mainNav = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Purchase Orders", url: "/purchase-orders", icon: FileText },
-  { title: "Inventory", url: "/inventory", icon: Boxes },
-  { title: "Movements", url: "/movements", icon: ArrowRightLeft },
+  { title: "Panel", url: "/", icon: LayoutDashboard },
+  { title: "Ordenes de Compra", url: "/purchase-orders", icon: FileText },
+  { title: "Inventario", url: "/inventory", icon: Boxes },
+  { title: "Movimientos", url: "/movements", icon: ArrowRightLeft },
 ];
 
 const manageNav = [
-  { title: "Products", url: "/products", icon: Package },
-  { title: "Categories", url: "/categories", icon: Tags },
-  { title: "Suppliers", url: "/suppliers", icon: Truck },
-  { title: "Warehouses", url: "/warehouses", icon: Warehouse },
+  { title: "Productos", url: "/products", icon: Package },
+  { title: "Categorias", url: "/categories", icon: Tags },
+  { title: "Proveedores", url: "/suppliers", icon: Truck },
+  { title: "Almacenes", url: "/warehouses", icon: Warehouse },
 ];
 
 export function AppSidebar() {
@@ -53,14 +53,14 @@ export function AppSidebar() {
             <img src={rolloLogo} alt="Rollo" className="w-9 h-9 rounded-full object-cover" />
             <div>
               <h1 className="text-base font-bold tracking-tight text-sidebar-foreground">Rollo</h1>
-              <p className="text-[11px] text-sidebar-foreground/60 leading-none">Inventory Manager</p>
+              <p className="text-[11px] text-sidebar-foreground/60 leading-none">Gestor de Inventario</p>
             </div>
           </div>
         </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Overview</SidebarGroupLabel>
+          <SidebarGroupLabel>Vista General</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNav.map((item) => (
@@ -81,7 +81,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Manage</SidebarGroupLabel>
+          <SidebarGroupLabel>Administrar</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {manageNav.map((item) => (

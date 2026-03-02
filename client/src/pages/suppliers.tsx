@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +36,7 @@ function AddSupplierDialog({ onSuccess }: { onSuccess: () => void }) {
       });
     },
     onSuccess: () => {
-      toast({ title: "Supplier created" });
+      toast({ title: "Proveedor creado" });
       setOpen(false);
       setName("");
       setContact("");
@@ -53,30 +54,31 @@ function AddSupplierDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogTrigger asChild>
         <Button className="bg-[#ccdd53]" data-testid="button-add-supplier">
           <Plus className="w-4 h-4 mr-2" />
-          Add Supplier
+          Agregar Proveedor
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New Supplier</DialogTitle>
+          <DialogTitle>Nuevo Proveedor</DialogTitle>
+          <DialogDescription>Agrega un proveedor de productos</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Company Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Supplier name" data-testid="input-supplier-name" />
+            <Label>Nombre de la Empresa</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del proveedor" data-testid="input-supplier-name" />
           </div>
           <div className="space-y-2">
-            <Label>Contact Person</Label>
-            <Input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Optional" data-testid="input-supplier-contact" />
+            <Label>Persona de Contacto</Label>
+            <Input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Opcional" data-testid="input-supplier-contact" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" data-testid="input-supplier-phone" />
+              <Label>Telefono</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Opcional" data-testid="input-supplier-phone" />
             </div>
             <div className="space-y-2">
-              <Label>Email</Label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Optional" data-testid="input-supplier-email" />
+              <Label>Correo</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Opcional" data-testid="input-supplier-email" />
             </div>
           </div>
           <Button
@@ -85,7 +87,7 @@ function AddSupplierDialog({ onSuccess }: { onSuccess: () => void }) {
             disabled={!name || mutation.isPending}
             data-testid="button-submit-supplier"
           >
-            {mutation.isPending ? "Creating..." : "Create Supplier"}
+            {mutation.isPending ? "Creando..." : "Crear Proveedor"}
           </Button>
         </div>
       </DialogContent>
@@ -106,8 +108,8 @@ export default function SuppliersPage() {
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-suppliers-title">Suppliers</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your product suppliers</p>
+          <h1 className="text-2xl font-bold" data-testid="text-suppliers-title">Proveedores</h1>
+          <p className="text-sm text-muted-foreground mt-1">Administra tus proveedores de productos</p>
         </div>
         <AddSupplierDialog onSuccess={invalidate} />
       </div>
@@ -122,8 +124,8 @@ export default function SuppliersPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <Truck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No suppliers yet</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Add your first supplier to get started</p>
+            <p className="text-muted-foreground">No hay proveedores</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">Agrega tu primer proveedor para comenzar</p>
           </CardContent>
         </Card>
       ) : (

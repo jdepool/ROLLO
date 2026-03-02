@@ -79,10 +79,10 @@ function StatCard({
 
 function MovementTypeLabel({ type }: { type: string }) {
   const labels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    entrada: { label: "Entry", variant: "default" },
-    salida: { label: "Exit", variant: "secondary" },
-    ajuste: { label: "Adjustment", variant: "outline" },
-    transfer: { label: "Transfer", variant: "secondary" },
+    entrada: { label: "Entrada", variant: "default" },
+    salida: { label: "Salida", variant: "secondary" },
+    ajuste: { label: "Ajuste", variant: "outline" },
+    transfer: { label: "Transferencia", variant: "secondary" },
   };
   const cfg = labels[type] || { label: type, variant: "outline" as const };
   return <Badge variant={cfg.variant} className="text-xs">{cfg.label}</Badge>;
@@ -104,39 +104,39 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Dashboard</h1>
+        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Panel</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Overview of your inventory status
+          Resumen del estado de tu inventario
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
-          title="Total Products"
+          title="Total Productos"
           value={summary?.totalProducts ?? 0}
           icon={Package}
           loading={summaryLoading}
           testId="stat-total-products"
         />
         <StatCard
-          title="Inventory Value"
-          value={summary ? `$${Number(summary.totalValue || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "$0.00"}
+          title="Valor del Inventario"
+          value={summary ? `$${Number(summary.totalValue || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "$0.00"}
           icon={DollarSign}
           variant="success"
           loading={summaryLoading}
           testId="stat-total-value"
         />
         <StatCard
-          title="Low Stock"
+          title="Stock Bajo"
           value={summary?.lowStockCount ?? 0}
-          subtitle="Items below minimum"
+          subtitle="Productos bajo el minimo"
           icon={AlertTriangle}
           variant="warning"
           loading={summaryLoading}
           testId="stat-low-stock"
         />
         <StatCard
-          title="Out of Stock"
+          title="Sin Stock"
           value={summary?.outOfStockCount ?? 0}
           icon={XCircle}
           variant="danger"
@@ -144,9 +144,9 @@ export default function Dashboard() {
           testId="stat-out-of-stock"
         />
         <StatCard
-          title="Expiring Soon"
+          title="Por Vencer"
           value={summary?.expiringSoonCount ?? 0}
-          subtitle="Within 3 days"
+          subtitle="En los proximos 3 dias"
           icon={Clock}
           variant="warning"
           loading={summaryLoading}
@@ -159,10 +159,10 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
-              Low Stock Alerts
+              Alertas de Stock Bajo
             </CardTitle>
             <Badge variant="secondary" className="text-xs">
-              {lowStock?.length ?? 0} items
+              {lowStock?.length ?? 0} productos
             </Badge>
           </CardHeader>
           <CardContent className="p-0">
@@ -175,7 +175,7 @@ export default function Dashboard() {
             ) : !lowStock?.length ? (
               <div className="p-6 text-center">
                 <TrendingUp className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">All stock levels are healthy</p>
+                <p className="text-sm text-muted-foreground">Todos los niveles de stock estan bien</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -206,7 +206,7 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <ArrowRightLeft className="w-4 h-4 text-primary" />
-              Recent Movements
+              Movimientos Recientes
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -219,7 +219,7 @@ export default function Dashboard() {
             ) : !movements?.length ? (
               <div className="p-6 text-center">
                 <ArrowRightLeft className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No movements recorded yet</p>
+                <p className="text-sm text-muted-foreground">No hay movimientos registrados</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -230,7 +230,7 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">
                         {mov.warehouseName} &middot;{" "}
                         {mov.createdAt
-                          ? new Date(mov.createdAt).toLocaleDateString("en-US", {
+                          ? new Date(mov.createdAt).toLocaleDateString("es-MX", {
                               month: "short",
                               day: "numeric",
                               hour: "2-digit",

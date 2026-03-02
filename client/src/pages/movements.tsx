@@ -13,9 +13,9 @@ function MovementIcon({ type }: { type: string }) {
 
 function MovementTypeBadge({ type }: { type: string }) {
   const cfg: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-    entrada: { label: "Entry", variant: "default" },
-    salida: { label: "Exit", variant: "secondary" },
-    ajuste: { label: "Adjustment", variant: "outline" },
+    entrada: { label: "Entrada", variant: "default" },
+    salida: { label: "Salida", variant: "secondary" },
+    ajuste: { label: "Ajuste", variant: "outline" },
   };
   const c = cfg[type] || { label: type, variant: "outline" as const };
   return <Badge variant={c.variant} className="text-xs">{c.label}</Badge>;
@@ -29,9 +29,9 @@ export default function MovementsPage() {
   return (
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-movements-title">Movement History</h1>
+        <h1 className="text-2xl font-bold" data-testid="text-movements-title">Historial de Movimientos</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Track all inventory entries, exits, and adjustments
+          Registra todas las entradas, salidas y ajustes de inventario
         </p>
       </div>
 
@@ -46,9 +46,9 @@ export default function MovementsPage() {
           ) : !movements?.length ? (
             <div className="p-10 text-center">
               <ArrowRightLeft className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No movements recorded yet</p>
+              <p className="text-muted-foreground">No hay movimientos registrados</p>
               <p className="text-sm text-muted-foreground/70 mt-1">
-                Movements will appear here when stock is added or adjusted
+                Los movimientos apareceran aqui cuando se agregue o ajuste stock
               </p>
             </div>
           ) : (
@@ -56,13 +56,13 @@ export default function MovementsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Type</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Product</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Warehouse</th>
-                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Quantity</th>
-                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Unit Cost</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Notes</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Date</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Tipo</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Producto</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Almacen</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Cantidad</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Costo Unit.</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Notas</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Fecha</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -89,7 +89,7 @@ export default function MovementsPage() {
                       </td>
                       <td className="px-5 py-3 text-muted-foreground text-xs whitespace-nowrap">
                         {mov.createdAt
-                          ? new Date(mov.createdAt).toLocaleDateString("en-US", {
+                          ? new Date(mov.createdAt).toLocaleDateString("es-MX", {
                               month: "short",
                               day: "numeric",
                               year: "numeric",

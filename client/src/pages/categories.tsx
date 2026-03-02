@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +29,7 @@ function AddCategoryDialog({ onSuccess }: { onSuccess: () => void }) {
       await apiRequest("POST", "/api/categories", { name, color });
     },
     onSuccess: () => {
-      toast({ title: "Category created" });
+      toast({ title: "Categoria creada" });
       setOpen(false);
       setName("");
       setColor("#6366f1");
@@ -44,17 +45,18 @@ function AddCategoryDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogTrigger asChild>
         <Button className="bg-[#ccdd53]" data-testid="button-add-category">
           <Plus className="w-4 h-4 mr-2" />
-          Add Category
+          Agregar Categoria
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>New Category</DialogTitle>
+          <DialogTitle>Nueva Categoria</DialogTitle>
+          <DialogDescription>Crea una categoria para organizar productos</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Category name" data-testid="input-category-name" />
+            <Label>Nombre</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la categoria" data-testid="input-category-name" />
           </div>
           <div className="space-y-2">
             <Label>Color</Label>
@@ -75,7 +77,7 @@ function AddCategoryDialog({ onSuccess }: { onSuccess: () => void }) {
             disabled={!name || mutation.isPending}
             data-testid="button-submit-category"
           >
-            {mutation.isPending ? "Creating..." : "Create Category"}
+            {mutation.isPending ? "Creando..." : "Crear Categoria"}
           </Button>
         </div>
       </DialogContent>
@@ -96,8 +98,8 @@ export default function CategoriesPage() {
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-categories-title">Categories</h1>
-          <p className="text-sm text-muted-foreground mt-1">Organize your products by category</p>
+          <h1 className="text-2xl font-bold" data-testid="text-categories-title">Categorias</h1>
+          <p className="text-sm text-muted-foreground mt-1">Organiza tus productos por categoria</p>
         </div>
         <AddCategoryDialog onSuccess={invalidate} />
       </div>
@@ -112,8 +114,8 @@ export default function CategoriesPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <Tags className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No categories yet</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Create one to organize your products</p>
+            <p className="text-muted-foreground">No hay categorias</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">Crea una para organizar tus productos</p>
           </CardContent>
         </Card>
       ) : (

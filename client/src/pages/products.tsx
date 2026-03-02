@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -52,7 +53,7 @@ function AddProductDialog({ onSuccess }: { onSuccess: () => void }) {
       });
     },
     onSuccess: () => {
-      toast({ title: "Product created" });
+      toast({ title: "Producto creado" });
       setOpen(false);
       setName("");
       setUnit("unidad");
@@ -73,56 +74,57 @@ function AddProductDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogTrigger asChild>
         <Button className="bg-[#ccdd53]" data-testid="button-add-product">
           <Plus className="w-4 h-4 mr-2" />
-          Add Product
+          Agregar Producto
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New Product</DialogTitle>
+          <DialogTitle>Nuevo Producto</DialogTitle>
+          <DialogDescription>Agrega un producto al catalogo</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product name" data-testid="input-product-name" />
+            <Label>Nombre</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del producto" data-testid="input-product-name" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Unit</Label>
+              <Label>Unidad</Label>
               <Select value={unit} onValueChange={setUnit}>
                 <SelectTrigger data-testid="select-unit">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="unidad">Unit</SelectItem>
+                  <SelectItem value="unidad">Unidad</SelectItem>
                   <SelectItem value="kg">Kg</SelectItem>
                   <SelectItem value="lb">Lb</SelectItem>
-                  <SelectItem value="lt">Liter</SelectItem>
+                  <SelectItem value="lt">Litro</SelectItem>
                   <SelectItem value="oz">Oz</SelectItem>
-                  <SelectItem value="box">Box</SelectItem>
+                  <SelectItem value="box">Caja</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Min Stock</Label>
+              <Label>Stock Minimo</Label>
               <Input type="number" min="0" value={minStock} onChange={(e) => setMinStock(e.target.value)} data-testid="input-min-stock" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Cost Price</Label>
+              <Label>Precio de Costo</Label>
               <Input type="number" min="0" step="0.01" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} data-testid="input-cost-price" />
             </div>
             <div className="space-y-2">
-              <Label>Shelf Life (days)</Label>
-              <Input type="number" min="0" value={shelfLifeDays} onChange={(e) => setShelfLifeDays(e.target.value)} placeholder="Optional" data-testid="input-shelf-life" />
+              <Label>Vida Util (dias)</Label>
+              <Input type="number" min="0" value={shelfLifeDays} onChange={(e) => setShelfLifeDays(e.target.value)} placeholder="Opcional" data-testid="input-shelf-life" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label>Categoria</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger data-testid="select-category">
-                  <SelectValue placeholder="Optional" />
+                  <SelectValue placeholder="Opcional" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories?.map((c) => (
@@ -132,10 +134,10 @@ function AddProductDialog({ onSuccess }: { onSuccess: () => void }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Supplier</Label>
+              <Label>Proveedor</Label>
               <Select value={supplierId} onValueChange={setSupplierId}>
                 <SelectTrigger data-testid="select-supplier">
-                  <SelectValue placeholder="Optional" />
+                  <SelectValue placeholder="Opcional" />
                 </SelectTrigger>
                 <SelectContent>
                   {suppliers?.map((s) => (
@@ -151,7 +153,7 @@ function AddProductDialog({ onSuccess }: { onSuccess: () => void }) {
             disabled={!name || mutation.isPending}
             data-testid="button-submit-product"
           >
-            {mutation.isPending ? "Creating..." : "Create Product"}
+            {mutation.isPending ? "Creando..." : "Crear Producto"}
           </Button>
         </div>
       </DialogContent>
@@ -177,8 +179,8 @@ export default function ProductsPage() {
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-products-title">Products</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your product catalog</p>
+          <h1 className="text-2xl font-bold" data-testid="text-products-title">Productos</h1>
+          <p className="text-sm text-muted-foreground mt-1">Administra tu catalogo de productos</p>
         </div>
         <AddProductDialog onSuccess={invalidate} />
       </div>
@@ -188,7 +190,7 @@ export default function ProductsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
+              placeholder="Buscar productos..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -209,20 +211,20 @@ export default function ProductsPage() {
           ) : !filtered?.length ? (
             <div className="p-10 text-center">
               <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No products found</p>
+              <p className="text-muted-foreground">No se encontraron productos</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Name</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Category</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Supplier</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Unit</th>
-                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Min Stock</th>
-                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Cost</th>
-                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Shelf Life</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Nombre</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Categoria</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Proveedor</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Unidad</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Stock Min.</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Costo</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Vida Util</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">

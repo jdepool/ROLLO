@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -83,16 +84,16 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
       setStep("review");
     },
     onError: (err: Error) => {
-      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
+      toast({ title: "Error al escanear", description: err.message, variant: "destructive" });
       setStep("upload");
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!extractedData) throw new Error("No data");
+      if (!extractedData) throw new Error("Sin datos");
       const targetWarehouseId = mainWarehouse?.id;
-      if (!targetWarehouseId) throw new Error("No main warehouse set. Please set a main warehouse first.");
+      if (!targetWarehouseId) throw new Error("No hay almacen principal. Ve a Almacenes y establece uno primero.");
 
       await apiRequest("POST", "/api/purchase-orders", {
         invoiceNumber: extractedData.invoiceNumber,
@@ -113,7 +114,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
       });
     },
     onSuccess: () => {
-      toast({ title: "Purchase order saved" });
+      toast({ title: "Orden de compra guardada" });
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
       resetAndClose();
       onSuccess();
@@ -196,23 +197,28 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
     <>
       <Button className="bg-[#ccdd53]" onClick={() => setOpen(true)} data-testid="button-scan-po">
         <Upload className="w-4 h-4 mr-2" />
-        Scan Purchase Order
+        Escanear Orden de Compra
       </Button>
       <Dialog open={open} onOpenChange={(v) => { if (!v) resetAndClose(); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {step === "upload" && "Upload Purchase Order"}
-              {step === "scanning" && "Scanning Document..."}
-              {step === "review" && "Review Extracted Data"}
+              {step === "upload" && "Subir Orden de Compra"}
+              {step === "scanning" && "Escaneando Documento..."}
+              {step === "review" && "Revisar Datos Extraidos"}
             </DialogTitle>
+            <DialogDescription>
+              {step === "upload" && "Sube una foto de tu orden de compra"}
+              {step === "scanning" && "La IA esta leyendo tu documento"}
+              {step === "review" && "Verifica y edita los datos antes de guardar"}
+            </DialogDescription>
           </DialogHeader>
 
           {step === "upload" && (
             <div className="space-y-4">
               {!mainWarehouse && (
                 <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">
-                  No main warehouse set. Go to Warehouses and set one first.
+                  No hay almacen principal. Ve a Almacenes y establece uno primero.
                 </div>
               )}
               <div
@@ -234,15 +240,15 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                 {imagePreview ? (
                   <img
                     src={imagePreview}
-                    alt="Preview"
+                    alt="Vista previa"
                     className="max-h-64 mx-auto rounded-md"
                     data-testid="img-preview"
                   />
                 ) : (
                   <div className="space-y-2">
                     <ImageIcon className="w-12 h-12 text-muted-foreground/30 mx-auto" />
-                    <p className="text-sm text-muted-foreground">Drag & drop or click to upload a photo of your purchase order</p>
-                    <p className="text-xs text-muted-foreground/60">Supports JPG, PNG, WEBP</p>
+                    <p className="text-sm text-muted-foreground">Arrastra y suelta o haz clic para subir una foto de tu orden de compra</p>
+                    <p className="text-xs text-muted-foreground/60">Soporta JPG, PNG, WEBP</p>
                   </div>
                 )}
               </div>
@@ -254,7 +260,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                     onClick={() => { setImagePreview(null); setImageBase64(null); }}
                     data-testid="button-clear-image"
                   >
-                    Clear
+                    Limpiar
                   </Button>
                   <Button
                     className="flex-1 bg-[#ccdd53]"
@@ -262,7 +268,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                     disabled={!mainWarehouse}
                     data-testid="button-start-scan"
                   >
-                    Scan with AI
+                    Escanear con IA
                   </Button>
                 </div>
               )}
@@ -272,8 +278,8 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
           {step === "scanning" && (
             <div className="py-12 text-center space-y-4">
               <Loader2 className="w-10 h-10 animate-spin mx-auto text-primary" />
-              <p className="text-sm text-muted-foreground">AI is reading your purchase order...</p>
-              <p className="text-xs text-muted-foreground/60">This may take a few seconds</p>
+              <p className="text-sm text-muted-foreground">La IA esta leyendo tu orden de compra...</p>
+              <p className="text-xs text-muted-foreground/60">Esto puede tomar unos segundos</p>
             </div>
           )}
 
@@ -281,7 +287,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Invoice Number</Label>
+                  <Label className="text-xs text-muted-foreground">Numero de Factura</Label>
                   <Input
                     value={extractedData.invoiceNumber || ""}
                     onChange={(e) => setExtractedData({ ...extractedData, invoiceNumber: e.target.value })}
@@ -289,7 +295,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Supplier</Label>
+                  <Label className="text-xs text-muted-foreground">Proveedor</Label>
                   <Input
                     value={extractedData.supplierName || ""}
                     onChange={(e) => setExtractedData({ ...extractedData, supplierName: e.target.value })}
@@ -300,18 +306,18 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
 
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  Destination: {mainWarehouse?.name || "No main warehouse"}
+                  Destino: {mainWarehouse?.name || "Sin almacen principal"}
                 </Label>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground font-medium">Line Items ({extractedData.items.length})</Label>
+                <Label className="text-xs text-muted-foreground font-medium">Articulos ({extractedData.items.length})</Label>
                 <div className="space-y-3">
                   {extractedData.items.map((item, i) => (
                     <div key={i} className="space-y-2 p-3 rounded-md bg-muted/30" data-testid={`po-item-${i}`}>
                       <div className="grid grid-cols-12 gap-2 items-end">
                         <div className="col-span-4 space-y-1">
-                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Product</Label>}
+                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Producto</Label>}
                           <Input
                             value={item.productName}
                             onChange={(e) => updateItem(i, "productName", e.target.value)}
@@ -319,7 +325,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                           />
                         </div>
                         <div className="col-span-2 space-y-1">
-                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Invoice Qty</Label>}
+                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Cant. Factura</Label>}
                           <Input
                             type="number"
                             value={item.quantity}
@@ -328,7 +334,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                           />
                         </div>
                         <div className="col-span-2 space-y-1">
-                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Unit $</Label>}
+                          {i === 0 && <Label className="text-[10px] text-muted-foreground">Precio $</Label>}
                           <Input
                             type="number"
                             step="0.01"
@@ -365,10 +371,10 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                             }}
                             data-testid={`checkbox-verified-${i}`}
                           />
-                          <Label htmlFor={`verified-${i}`} className="text-xs text-muted-foreground">Verified</Label>
+                          <Label htmlFor={`verified-${i}`} className="text-xs text-muted-foreground">Verificado</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Label className="text-xs text-muted-foreground whitespace-nowrap">Actual Qty</Label>
+                          <Label className="text-xs text-muted-foreground whitespace-nowrap">Cant. Real</Label>
                           <Input
                             type="number"
                             className="w-24"
@@ -382,7 +388,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                           />
                           {item.actualQty !== item.quantity && (
                             <span className="text-xs text-destructive whitespace-nowrap">
-                              Diff: {item.actualQty - item.quantity > 0 ? "+" : ""}{item.actualQty - item.quantity}
+                              Dif: {item.actualQty - item.quantity > 0 ? "+" : ""}{item.actualQty - item.quantity}
                             </span>
                           )}
                         </div>
@@ -404,7 +410,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Tax</Label>
+                  <Label className="text-xs text-muted-foreground">Impuesto</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -427,7 +433,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
 
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setStep("upload")} data-testid="button-back">
-                  Back
+                  Volver
                 </Button>
                 <Button
                   className="flex-1 bg-[#ccdd53]"
@@ -440,7 +446,7 @@ function ScanDialog({ onSuccess }: { onSuccess: () => void }) {
                   ) : (
                     <Check className="w-4 h-4 mr-2" />
                   )}
-                  Save Purchase Order
+                  Guardar Orden de Compra
                 </Button>
               </div>
             </div>
@@ -460,7 +466,7 @@ function PODetailDialog({ po, onConfirm }: { po: PurchaseOrderWithItems; onConfi
       await apiRequest("POST", `/api/purchase-orders/${po.id}/confirm`);
     },
     onSuccess: () => {
-      toast({ title: "Purchase order confirmed", description: "Inventory has been updated" });
+      toast({ title: "Orden de compra confirmada", description: "El inventario ha sido actualizado" });
       setOpen(false);
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
@@ -481,23 +487,24 @@ function PODetailDialog({ po, onConfirm }: { po: PurchaseOrderWithItems; onConfi
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Purchase Order {po.invoiceNumber ? `#${po.invoiceNumber}` : `#${po.id}`}</DialogTitle>
+            <DialogTitle>Orden de Compra {po.invoiceNumber ? `#${po.invoiceNumber}` : `#${po.id}`}</DialogTitle>
+            <DialogDescription>Detalle de la orden de compra</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <span className="text-muted-foreground">Supplier:</span>
-                <p className="font-medium">{po.supplierName || "Unknown"}</p>
+                <span className="text-muted-foreground">Proveedor:</span>
+                <p className="font-medium">{po.supplierName || "Desconocido"}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Warehouse:</span>
-                <p className="font-medium">{po.warehouseName || "Not assigned"}</p>
+                <span className="text-muted-foreground">Almacen:</span>
+                <p className="font-medium">{po.warehouseName || "No asignado"}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Status:</span>
+                <span className="text-muted-foreground">Estado:</span>
                 <div className="mt-1">
                   <Badge variant={po.status === "confirmed" ? "default" : "secondary"}>
-                    {po.status === "confirmed" ? "Confirmed" : "Draft"}
+                    {po.status === "confirmed" ? "Confirmado" : "Borrador"}
                   </Badge>
                 </div>
               </div>
@@ -511,9 +518,9 @@ function PODetailDialog({ po, onConfirm }: { po: PurchaseOrderWithItems; onConfi
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="text-left p-2">Product</th>
-                    <th className="text-right p-2">Qty</th>
-                    <th className="text-right p-2">Unit $</th>
+                    <th className="text-left p-2">Producto</th>
+                    <th className="text-right p-2">Cant.</th>
+                    <th className="text-right p-2">Precio $</th>
                     <th className="text-right p-2">Total</th>
                   </tr>
                 </thead>
@@ -533,7 +540,7 @@ function PODetailDialog({ po, onConfirm }: { po: PurchaseOrderWithItems; onConfi
                     <td className="p-2 text-right font-medium">${Number(po.subtotal || 0).toFixed(2)}</td>
                   </tr>
                   <tr>
-                    <td className="p-2" colSpan={3}>Tax</td>
+                    <td className="p-2" colSpan={3}>Impuesto</td>
                     <td className="p-2 text-right">${Number(po.tax || 0).toFixed(2)}</td>
                   </tr>
                   <tr className="font-semibold border-t">
@@ -556,7 +563,7 @@ function PODetailDialog({ po, onConfirm }: { po: PurchaseOrderWithItems; onConfi
                 ) : (
                   <Check className="w-4 h-4 mr-2" />
                 )}
-                Confirm & Update Inventory
+                Confirmar y Actualizar Inventario
               </Button>
             )}
           </div>
@@ -573,15 +580,15 @@ export default function PurchaseOrdersPage() {
 
   const formatDate = (date: string | Date | null) => {
     if (!date) return "-";
-    return new Date(date).toLocaleDateString();
+    return new Date(date).toLocaleDateString("es-MX");
   };
 
   return (
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-purchase-orders-title">Purchase Orders</h1>
-          <p className="text-sm text-muted-foreground mt-1">Upload invoices and update inventory automatically</p>
+          <h1 className="text-2xl font-bold" data-testid="text-purchase-orders-title">Ordenes de Compra</h1>
+          <p className="text-sm text-muted-foreground mt-1">Sube facturas y actualiza el inventario automaticamente</p>
         </div>
         <ScanDialog onSuccess={() => {}} />
       </div>
@@ -596,8 +603,8 @@ export default function PurchaseOrdersPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No purchase orders yet</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Upload a photo of a purchase order to get started</p>
+            <p className="text-muted-foreground">No hay ordenes de compra</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">Sube una foto de una orden de compra para comenzar</p>
           </CardContent>
         </Card>
       ) : (
@@ -605,27 +612,27 @@ export default function PurchaseOrdersPage() {
           <table className="w-full text-sm" data-testid="table-purchase-orders">
             <thead className="bg-muted/50">
               <tr>
-                <th className="text-left p-3">Invoice #</th>
-                <th className="text-left p-3">Supplier</th>
-                <th className="text-left p-3">Warehouse</th>
-                <th className="text-right p-3">Items</th>
+                <th className="text-left p-3">Factura #</th>
+                <th className="text-left p-3">Proveedor</th>
+                <th className="text-left p-3">Almacen</th>
+                <th className="text-right p-3">Articulos</th>
                 <th className="text-right p-3">Total</th>
-                <th className="text-center p-3">Status</th>
-                <th className="text-left p-3">Date</th>
+                <th className="text-center p-3">Estado</th>
+                <th className="text-left p-3">Fecha</th>
                 <th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
               {orders.map((po) => (
                 <tr key={po.id} className="border-t" data-testid={`row-po-${po.id}`}>
-                  <td className="p-3 font-medium">{po.invoiceNumber || `PO-${po.id}`}</td>
+                  <td className="p-3 font-medium">{po.invoiceNumber || `OC-${po.id}`}</td>
                   <td className="p-3">{po.supplierName || "-"}</td>
                   <td className="p-3">{po.warehouseName || "-"}</td>
                   <td className="p-3 text-right">{po.items.length}</td>
                   <td className="p-3 text-right font-medium">${Number(po.total || 0).toFixed(2)}</td>
                   <td className="p-3 text-center">
                     <Badge variant={po.status === "confirmed" ? "default" : "secondary"}>
-                      {po.status === "confirmed" ? "Confirmed" : "Draft"}
+                      {po.status === "confirmed" ? "Confirmado" : "Borrador"}
                     </Badge>
                   </td>
                   <td className="p-3 text-muted-foreground">{formatDate(po.createdAt)}</td>

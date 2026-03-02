@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -64,7 +65,7 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
       });
     },
     onSuccess: () => {
-      toast({ title: "Stock added successfully" });
+      toast({ title: "Stock agregado exitosamente" });
       setOpen(false);
       resetForm();
       onSuccess();
@@ -89,19 +90,20 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogTrigger asChild>
         <Button className="bg-[#ccdd53]" data-testid="button-add-inventory">
           <Plus className="w-4 h-4 mr-2" />
-          Add Stock
+          Agregar Stock
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Inventory</DialogTitle>
+          <DialogTitle>Agregar Inventario</DialogTitle>
+          <DialogDescription>Registra nuevo stock en un almacen</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Warehouse</Label>
+            <Label>Almacen</Label>
             <Select value={warehouseId} onValueChange={setWarehouseId}>
               <SelectTrigger data-testid="select-warehouse">
-                <SelectValue placeholder="Select warehouse" />
+                <SelectValue placeholder="Seleccionar almacen" />
               </SelectTrigger>
               <SelectContent>
                 {warehouses?.map((w) => (
@@ -111,10 +113,10 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Product</Label>
+            <Label>Producto</Label>
             <Select value={productId} onValueChange={setProductId}>
               <SelectTrigger data-testid="select-product">
-                <SelectValue placeholder="Select product" />
+                <SelectValue placeholder="Seleccionar producto" />
               </SelectTrigger>
               <SelectContent>
                 {products?.map((p) => (
@@ -125,7 +127,7 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Quantity</Label>
+              <Label>Cantidad</Label>
               <Input
                 type="number"
                 min="0"
@@ -137,7 +139,7 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Unit Cost</Label>
+              <Label>Costo Unitario</Label>
               <Input
                 type="number"
                 min="0"
@@ -151,7 +153,7 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Expiry Date</Label>
+              <Label>Fecha de Vencimiento</Label>
               <Input
                 type="date"
                 value={expiryDate}
@@ -160,21 +162,21 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Batch #</Label>
+              <Label>Lote #</Label>
               <Input
                 value={batchNumber}
                 onChange={(e) => setBatchNumber(e.target.value)}
-                placeholder="Optional"
+                placeholder="Opcional"
                 data-testid="input-batch"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Notes</Label>
+            <Label>Notas</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional notes..."
+              placeholder="Notas opcionales..."
               className="resize-none"
               data-testid="input-notes"
             />
@@ -185,7 +187,7 @@ function AddInventoryDialog({ onSuccess }: { onSuccess: () => void }) {
             disabled={!warehouseId || !productId || !quantity || mutation.isPending}
             data-testid="button-submit-inventory"
           >
-            {mutation.isPending ? "Adding..." : "Add Stock"}
+            {mutation.isPending ? "Agregando..." : "Agregar Stock"}
           </Button>
         </div>
       </DialogContent>
@@ -207,7 +209,7 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
       });
     },
     onSuccess: () => {
-      toast({ title: "Stock adjusted" });
+      toast({ title: "Stock ajustado" });
       setOpen(false);
       onSuccess();
     },
@@ -225,11 +227,12 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Adjust: {item.productName}</DialogTitle>
+          <DialogTitle>Ajustar: {item.productName}</DialogTitle>
+          <DialogDescription>Modifica la cantidad actual del producto</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Current: {Number(item.quantity)} {item.unit}</Label>
+            <Label>Actual: {Number(item.quantity)} {item.unit}</Label>
             <Input
               type="number"
               min="0"
@@ -240,11 +243,11 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
             />
           </div>
           <div className="space-y-2">
-            <Label>Reason</Label>
+            <Label>Razon</Label>
             <Textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Reason for adjustment..."
+              placeholder="Razon del ajuste..."
               className="resize-none"
               data-testid="input-adjust-reason"
             />
@@ -255,7 +258,7 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
             disabled={mutation.isPending}
             data-testid="button-submit-adjust"
           >
-            {mutation.isPending ? "Saving..." : "Save Adjustment"}
+            {mutation.isPending ? "Guardando..." : "Guardar Ajuste"}
           </Button>
         </div>
       </DialogContent>
@@ -296,9 +299,9 @@ export default function InventoryPage() {
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-inventory-title">Inventory</h1>
+          <h1 className="text-2xl font-bold" data-testid="text-inventory-title">Inventario</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your stock across all warehouses
+            Administra tu stock en todos los almacenes
           </p>
         </div>
         <AddInventoryDialog onSuccess={invalidate} />
@@ -310,7 +313,7 @@ export default function InventoryPage() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search products..."
+                placeholder="Buscar productos..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -319,10 +322,10 @@ export default function InventoryPage() {
             </div>
             <Select value={filterWarehouse} onValueChange={setFilterWarehouse}>
               <SelectTrigger className="w-[180px]" data-testid="select-filter-warehouse">
-                <SelectValue placeholder="All warehouses" />
+                <SelectValue placeholder="Todos los almacenes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Warehouses</SelectItem>
+                <SelectItem value="all">Todos los Almacenes</SelectItem>
                 {warehouses?.map((w) => (
                   <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>
                 ))}
@@ -330,13 +333,13 @@ export default function InventoryPage() {
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-[160px]" data-testid="select-filter-status">
-                <SelectValue placeholder="All statuses" />
+                <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="low">Low Stock</SelectItem>
-                <SelectItem value="expiring">Expiring Soon</SelectItem>
-                <SelectItem value="ok">Healthy</SelectItem>
+                <SelectItem value="all">Todos los Estados</SelectItem>
+                <SelectItem value="low">Stock Bajo</SelectItem>
+                <SelectItem value="expiring">Por Vencer</SelectItem>
+                <SelectItem value="ok">Normal</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -354,9 +357,9 @@ export default function InventoryPage() {
           ) : !filtered?.length ? (
             <div className="p-10 text-center">
               <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No inventory items found</p>
+              <p className="text-muted-foreground">No se encontraron productos</p>
               <p className="text-sm text-muted-foreground/70 mt-1">
-                Add stock using the button above
+                Agrega stock usando el boton de arriba
               </p>
             </div>
           ) : (
@@ -364,13 +367,13 @@ export default function InventoryPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Product</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Warehouse</th>
-                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Qty</th>
-                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Unit Cost</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Batch</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Expiry</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Producto</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Almacen</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Cant.</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Costo Unit.</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Lote</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Vencimiento</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Estado</th>
                     <th className="text-right px-5 py-3 font-medium text-muted-foreground"></th>
                   </tr>
                 </thead>
@@ -397,7 +400,7 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-5 py-3 text-muted-foreground text-xs">
                         {item.expiryDate
-                          ? new Date(item.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                          ? new Date(item.expiryDate).toLocaleDateString("es-MX", { month: "short", day: "numeric", year: "numeric" })
                           : "-"}
                       </td>
                       <td className="px-5 py-3">
@@ -405,13 +408,13 @@ export default function InventoryPage() {
                           {item.isLowStock && (
                             <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 text-xs gap-1">
                               <AlertTriangle className="w-3 h-3" />
-                              Low
+                              Bajo
                             </Badge>
                           )}
                           {item.expiringSoon && (
                             <Badge variant="outline" className="text-red-600 dark:text-red-400 border-red-300 dark:border-red-700 text-xs gap-1">
                               <Clock className="w-3 h-3" />
-                              Expiring
+                              Por Vencer
                             </Badge>
                           )}
                           {!item.isLowStock && !item.expiringSoon && (

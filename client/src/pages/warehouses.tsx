@@ -53,7 +53,7 @@ function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
       });
     },
     onSuccess: () => {
-      toast({ title: "Store created" });
+      toast({ title: "Tienda creada" });
       setOpen(false);
       setName("");
       setAddress("");
@@ -70,29 +70,29 @@ function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogTrigger asChild>
         <Button className="bg-[#ccdd53]" data-testid="button-add-store">
           <Plus className="w-4 h-4 mr-2" />
-          Add Store
+          Agregar Tienda
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>New Store</DialogTitle>
-          <DialogDescription>Add a new store location</DialogDescription>
+          <DialogTitle>Nueva Tienda</DialogTitle>
+          <DialogDescription>Agrega una nueva ubicacion de tienda</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Store name" data-testid="input-store-name" />
+            <Label>Nombre</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la tienda" data-testid="input-store-name" />
           </div>
           <div className="space-y-2">
-            <Label>Address</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Optional" data-testid="input-store-address" />
+            <Label>Direccion</Label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Opcional" data-testid="input-store-address" />
           </div>
           <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" data-testid="input-store-phone" />
+            <Label>Telefono</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Opcional" data-testid="input-store-phone" />
           </div>
           <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || mutation.isPending} data-testid="button-submit-store">
-            {mutation.isPending ? "Creating..." : "Create Store"}
+            {mutation.isPending ? "Creando..." : "Crear Tienda"}
           </Button>
         </div>
       </DialogContent>
@@ -116,7 +116,7 @@ function EditStoreDialog({ store, onSuccess }: { store: StoreType; onSuccess: ()
       });
     },
     onSuccess: () => {
-      toast({ title: "Store updated" });
+      toast({ title: "Tienda actualizada" });
       setOpen(false);
       onSuccess();
     },
@@ -143,24 +143,24 @@ function EditStoreDialog({ store, onSuccess }: { store: StoreType; onSuccess: ()
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Edit Store</DialogTitle>
-          <DialogDescription>Modify store details</DialogDescription>
+          <DialogTitle>Editar Tienda</DialogTitle>
+          <DialogDescription>Modifica los datos de la tienda</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Store name" data-testid="input-edit-store-name" />
+            <Label>Nombre</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la tienda" data-testid="input-edit-store-name" />
           </div>
           <div className="space-y-2">
-            <Label>Address</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Optional" data-testid="input-edit-store-address" />
+            <Label>Direccion</Label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Opcional" data-testid="input-edit-store-address" />
           </div>
           <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" data-testid="input-edit-store-phone" />
+            <Label>Telefono</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Opcional" data-testid="input-edit-store-phone" />
           </div>
           <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || mutation.isPending} data-testid="button-submit-edit-store">
-            {mutation.isPending ? "Saving..." : "Save Changes"}
+            {mutation.isPending ? "Guardando..." : "Guardar Cambios"}
           </Button>
         </div>
       </DialogContent>
@@ -186,7 +186,7 @@ function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseTyp
       });
     },
     onSuccess: () => {
-      toast({ title: "Warehouse updated" });
+      toast({ title: "Almacen actualizado" });
       setOpen(false);
       onSuccess();
     },
@@ -213,15 +213,15 @@ function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseTyp
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Edit Warehouse</DialogTitle>
-          <DialogDescription>Modify warehouse details</DialogDescription>
+          <DialogTitle>Editar Almacen</DialogTitle>
+          <DialogDescription>Modifica los datos del almacen</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Store</Label>
+            <Label>Tienda</Label>
             <Select value={storeId} onValueChange={setStoreId}>
               <SelectTrigger data-testid="select-edit-warehouse-store">
-                <SelectValue placeholder="Select store" />
+                <SelectValue placeholder="Seleccionar tienda" />
               </SelectTrigger>
               <SelectContent>
                 {stores?.map((s) => (
@@ -231,15 +231,15 @@ function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseTyp
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Warehouse name" data-testid="input-edit-warehouse-name" />
+            <Label>Nombre</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del almacen" data-testid="input-edit-warehouse-name" />
           </div>
           <div className="space-y-2">
-            <Label>Location</Label>
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional" data-testid="input-edit-warehouse-location" />
+            <Label>Ubicacion</Label>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Opcional" data-testid="input-edit-warehouse-location" />
           </div>
           <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || !storeId || mutation.isPending} data-testid="button-submit-edit-warehouse">
-            {mutation.isPending ? "Saving..." : "Save Changes"}
+            {mutation.isPending ? "Guardando..." : "Guardar Cambios"}
           </Button>
         </div>
       </DialogContent>
@@ -271,7 +271,7 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
       }
     },
     onSuccess: () => {
-      toast({ title: "Warehouse created" });
+      toast({ title: "Almacen creado" });
       setOpen(false);
       setName("");
       setLocation("");
@@ -289,20 +289,20 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogTrigger asChild>
         <Button className="bg-[#ccdd53]" data-testid="button-add-warehouse">
           <Plus className="w-4 h-4 mr-2" />
-          Add Warehouse
+          Agregar Almacen
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>New Warehouse</DialogTitle>
-          <DialogDescription>Add a new warehouse location</DialogDescription>
+          <DialogTitle>Nuevo Almacen</DialogTitle>
+          <DialogDescription>Agrega un nuevo almacen</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Store</Label>
+            <Label>Tienda</Label>
             <Select value={storeId} onValueChange={setStoreId}>
               <SelectTrigger data-testid="select-store">
-                <SelectValue placeholder="Select store" />
+                <SelectValue placeholder="Seleccionar tienda" />
               </SelectTrigger>
               <SelectContent>
                 {stores?.map((s) => (
@@ -312,12 +312,12 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Warehouse name" data-testid="input-warehouse-name" />
+            <Label>Nombre</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del almacen" data-testid="input-warehouse-name" />
           </div>
           <div className="space-y-2">
-            <Label>Location</Label>
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional" data-testid="input-warehouse-location" />
+            <Label>Ubicacion</Label>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Opcional" data-testid="input-warehouse-location" />
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -326,10 +326,10 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
               onCheckedChange={(checked) => setIsMain(checked === true)}
               data-testid="checkbox-is-main"
             />
-            <Label htmlFor="is-main" className="text-sm">Set as main receiving warehouse</Label>
+            <Label htmlFor="is-main" className="text-sm">Establecer como almacen principal de recepcion</Label>
           </div>
           <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || !storeId || mutation.isPending} data-testid="button-submit-warehouse">
-            {mutation.isPending ? "Creating..." : "Create Warehouse"}
+            {mutation.isPending ? "Creando..." : "Crear Almacen"}
           </Button>
         </div>
       </DialogContent>
@@ -353,7 +353,7 @@ export default function WarehousesPage() {
       await apiRequest("PATCH", `/api/warehouses/${id}/set-main`);
     },
     onSuccess: () => {
-      toast({ title: "Main warehouse updated" });
+      toast({ title: "Almacen principal actualizado" });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
     },
   });
@@ -363,7 +363,7 @@ export default function WarehousesPage() {
       await apiRequest("DELETE", `/api/stores/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Store deleted" });
+      toast({ title: "Tienda eliminada" });
       setDeleteStoreId(null);
       invalidate();
     },
@@ -377,7 +377,7 @@ export default function WarehousesPage() {
       await apiRequest("DELETE", `/api/warehouses/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Warehouse deleted" });
+      toast({ title: "Almacen eliminado" });
       setDeleteWarehouseId(null);
       invalidate();
     },
@@ -400,8 +400,8 @@ export default function WarehousesPage() {
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-warehouses-title">Stores & Warehouses</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your storage locations</p>
+          <h1 className="text-2xl font-bold" data-testid="text-warehouses-title">Tiendas y Almacenes</h1>
+          <p className="text-sm text-muted-foreground mt-1">Administra tus ubicaciones de almacenamiento</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <AddStoreDialog onSuccess={invalidate} />
@@ -419,8 +419,8 @@ export default function WarehousesPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <Store className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No stores yet</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Create a store first, then add warehouses</p>
+            <p className="text-muted-foreground">No hay tiendas</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">Crea una tienda primero, luego agrega almacenes</p>
           </CardContent>
         </Card>
       ) : (
@@ -454,7 +454,7 @@ export default function WarehousesPage() {
                     </div>
                   </div>
                   {!storeWarehouses.length ? (
-                    <p className="text-sm text-muted-foreground ml-13">No warehouses assigned</p>
+                    <p className="text-sm text-muted-foreground ml-13">No hay almacenes asignados</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 ml-0">
                       {storeWarehouses.map((wh) => (
@@ -471,7 +471,7 @@ export default function WarehousesPage() {
                                 {(wh as any).isMain && (
                                   <Badge variant="secondary" className="text-[10px] gap-1">
                                     <Star className="w-3 h-3" />
-                                    Main
+                                    Principal
                                   </Badge>
                                 )}
                               </div>
@@ -503,7 +503,7 @@ export default function WarehousesPage() {
                                 disabled={setMainMutation.isPending}
                                 data-testid={`button-set-main-${wh.id}`}
                               >
-                                Set Main
+                                Principal
                               </Button>
                             )}
                           </div>
@@ -521,19 +521,19 @@ export default function WarehousesPage() {
       <AlertDialog open={deleteStoreId !== null} onOpenChange={(open) => !open && setDeleteStoreId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Store</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar Tienda</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteStoreName}"? This will also delete all warehouses assigned to this store. This action cannot be undone.
+              Estas seguro de eliminar "{deleteStoreName}"? Esto tambien eliminara todos los almacenes asignados a esta tienda. Esta accion no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete-store">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete-store">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteStoreId && deleteStoreMutation.mutate(deleteStoreId)}
               data-testid="button-confirm-delete-store"
             >
-              {deleteStoreMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteStoreMutation.isPending ? "Eliminando..." : "Eliminar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -542,19 +542,19 @@ export default function WarehousesPage() {
       <AlertDialog open={deleteWarehouseId !== null} onOpenChange={(open) => !open && setDeleteWarehouseId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Warehouse</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar Almacen</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteWarehouseName}"? This action cannot be undone.
+              Estas seguro de eliminar "{deleteWarehouseName}"? Esta accion no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete-warehouse">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete-warehouse">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteWarehouseId && deleteWarehouseMutation.mutate(deleteWarehouseId)}
               data-testid="button-confirm-delete-warehouse"
             >
-              {deleteWarehouseMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteWarehouseMutation.isPending ? "Eliminando..." : "Eliminar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
