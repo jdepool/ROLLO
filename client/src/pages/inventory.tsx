@@ -307,6 +307,26 @@ export default function InventoryPage() {
         <AddInventoryDialog onSuccess={invalidate} />
       </div>
 
+      <div className="flex flex-wrap gap-2 border-b" data-testid="warehouse-tabs">
+        <button
+          onClick={() => setFilterWarehouse("all")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${filterWarehouse === "all" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"}`}
+          data-testid="tab-warehouse-all"
+        >
+          Todos
+        </button>
+        {warehouses?.map((w) => (
+          <button
+            key={w.id}
+            onClick={() => setFilterWarehouse(String(w.id))}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${filterWarehouse === String(w.id) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"}`}
+            data-testid={`tab-warehouse-${w.id}`}
+          >
+            {w.name}
+          </button>
+        ))}
+      </div>
+
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -320,17 +340,6 @@ export default function InventoryPage() {
                 data-testid="input-search-inventory"
               />
             </div>
-            <Select value={filterWarehouse} onValueChange={setFilterWarehouse}>
-              <SelectTrigger className="w-[180px]" data-testid="select-filter-warehouse">
-                <SelectValue placeholder="Todos los almacenes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los Almacenes</SelectItem>
-                {warehouses?.map((w) => (
-                  <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-[160px]" data-testid="select-filter-status">
                 <SelectValue placeholder="Todos los estados" />
