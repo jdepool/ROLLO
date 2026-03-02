@@ -48,8 +48,8 @@ type TransferLine = {
   sourceQty: number;
   destQty: number;
   transferQty: number;
-  mode: "transfer" | "target";
-  targetQty: number;
+  lastEdited: "transfer" | "resultDest" | null;
+  resultDestInput: string;
 };
 
 function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -104,8 +104,8 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
         sourceQty: Number(item.quantity),
         destQty: destInventoryMap[item.product_id] || 0,
         transferQty: 0,
-        mode: "transfer" as const,
-        targetQty: destInventoryMap[item.product_id] || 0,
+        lastEdited: null,
+        resultDestInput: "",
       }));
     setLines(newLines);
   };
@@ -120,27 +120,23 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
     setLines([]);
   };
 
-  const updateLine = (index: number, field: "transferQty" | "targetQty" | "mode", value: string | number) => {
+  const updateLine = (index: number, field: "transferQty" | "resultDest", value: string) => {
     const updated = [...lines];
     const line = { ...updated[index] };
 
-    if (field === "mode") {
-      line.mode = value as "transfer" | "target";
-      if (line.mode === "target") {
-        line.targetQty = line.destQty;
-        line.transferQty = 0;
-      } else {
-        line.transferQty = 0;
-      }
-    } else if (field === "transferQty") {
-      const qty = Math.max(0, Math.min(Number(value) || 0, line.sourceQty));
+    if (field === "transferQty") {
+      const raw = Number(value) || 0;
+      const qty = Math.max(0, Math.min(raw, line.sourceQty));
       line.transferQty = qty;
-      line.targetQty = line.destQty + qty;
-    } else if (field === "targetQty") {
-      const target = Math.max(0, Number(value) || 0);
-      line.targetQty = target;
-      const needed = Math.max(0, target - line.destQty);
-      line.transferQty = Math.min(needed, line.sourceQty);
+      line.resultDestInput = String(line.destQty + qty);
+      line.lastEdited = "transfer";
+    } else if (field === "resultDest") {
+      line.resultDestInput = value;
+      const desired = Number(value) || 0;
+      const maxDest = line.destQty + line.sourceQty;
+      const clamped = Math.max(line.destQty, Math.min(desired, maxDest));
+      line.transferQty = clamped - line.destQty;
+      line.lastEdited = "resultDest";
     }
 
     updated[index] = line;
@@ -240,15 +236,14 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
                     <tr>
                       <th className="text-left p-2 font-medium text-muted-foreground">Producto</th>
                       <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">
-                        <span className="block text-[10px]">Origen</span>
+                        <span className="block text-[10px]">Inv. Origen</span>
                         {sourceName}
                       </th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Modo</th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Cantidad</th>
                       <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">
-                        <span className="block text-[10px]">Destino</span>
+                        <span className="block text-[10px]">Inv. Destino</span>
                         {destName}
                       </th>
+                      <th className="text-center p-2 font-medium text-muted-foreground">Cantidad</th>
                       <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">Resultante Origen</th>
                       <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">Resultante Destino</th>
                     </tr>
@@ -264,48 +259,22 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
                             <span className="text-xs text-muted-foreground ml-1">({line.unit})</span>
                           </td>
                           <td className="p-2 text-right font-mono">{line.sourceQty}</td>
-                          <td className="p-2 text-center">
-                            <Select
-                              value={line.mode}
-                              onValueChange={(v) => updateLine(i, "mode", v)}
-                            >
-                              <SelectTrigger className="h-8 text-xs w-28" data-testid={`select-mode-${line.productId}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="transfer">Transferir</SelectItem>
-                                <SelectItem value="target">Meta destino</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-2 text-center">
-                            {line.mode === "transfer" ? (
-                              <Input
-                                type="number"
-                                min="0"
-                                max={line.sourceQty}
-                                value={line.transferQty || ""}
-                                onChange={(e) => updateLine(i, "transferQty", e.target.value)}
-                                className="w-20 h-8 text-center mx-auto"
-                                placeholder="0"
-                                data-testid={`input-transfer-qty-${line.productId}`}
-                              />
-                            ) : (
-                              <Input
-                                type="number"
-                                min="0"
-                                value={line.targetQty || ""}
-                                onChange={(e) => updateLine(i, "targetQty", e.target.value)}
-                                className="w-20 h-8 text-center mx-auto"
-                                placeholder="0"
-                                data-testid={`input-target-qty-${line.productId}`}
-                              />
-                            )}
-                          </td>
                           <td className="p-2 text-right font-mono">{line.destQty}</td>
+                          <td className="p-2 text-center">
+                            <Input
+                              type="number"
+                              min="0"
+                              max={line.sourceQty}
+                              value={line.transferQty > 0 ? line.transferQty : ""}
+                              onChange={(e) => updateLine(i, "transferQty", e.target.value)}
+                              className="w-20 h-8 text-center mx-auto"
+                              placeholder="0"
+                              data-testid={`input-transfer-qty-${line.productId}`}
+                            />
+                          </td>
                           <td className="p-2 text-right">
                             {line.transferQty > 0 ? (
-                              <span className={`font-mono font-semibold ${finalSource < line.sourceQty ? "text-red-600 dark:text-red-400" : ""}`}>
+                              <span className="font-mono font-semibold text-red-600 dark:text-red-400">
                                 {finalSource}
                               </span>
                             ) : (
@@ -313,13 +282,16 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
                             )}
                           </td>
                           <td className="p-2 text-right">
-                            {line.transferQty > 0 ? (
-                              <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                                {finalDest}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground font-mono">-</span>
-                            )}
+                            <Input
+                              type="number"
+                              min={line.destQty}
+                              max={line.destQty + line.sourceQty}
+                              value={line.lastEdited === "resultDest" ? line.resultDestInput : (line.transferQty > 0 ? String(finalDest) : "")}
+                              onChange={(e) => updateLine(i, "resultDest", e.target.value)}
+                              className={`w-20 h-8 text-center ml-auto ${line.transferQty > 0 ? "border-emerald-400 text-emerald-600 dark:text-emerald-400 font-semibold" : ""}`}
+                              placeholder={String(line.destQty)}
+                              data-testid={`input-result-dest-${line.productId}`}
+                            />
                           </td>
                         </tr>
                       );
