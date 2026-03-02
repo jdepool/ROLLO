@@ -1,9 +1,29 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRightLeft, ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
-import type { MovementWithDetails } from "@shared/schema";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowRightLeft, ArrowDown, ArrowUp, RefreshCw, Loader2, Check, Repeat2 } from "lucide-react";
+import type { MovementWithDetails, Warehouse, InventoryWithDetails } from "@shared/schema";
 
 function MovementIcon({ type }: { type: string }) {
   if (type === "entrada") return <ArrowDown className="w-4 h-4 text-emerald-500" />;
@@ -21,6 +41,326 @@ function MovementTypeBadge({ type }: { type: string }) {
   return <Badge variant={c.variant} className="text-xs">{c.label}</Badge>;
 }
 
+type TransferLine = {
+  productId: number;
+  productName: string;
+  unit: string;
+  sourceQty: number;
+  destQty: number;
+  transferQty: number;
+  mode: "transfer" | "target";
+  targetQty: number;
+};
+
+function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [sourceId, setSourceId] = useState("");
+  const [destId, setDestId] = useState("");
+  const [lines, setLines] = useState<TransferLine[]>([]);
+  const { toast } = useToast();
+
+  const { data: warehouses } = useQuery<(Warehouse & { storeName?: string })[]>({
+    queryKey: ["/api/warehouses"],
+  });
+
+  const { data: sourceInventory } = useQuery<InventoryWithDetails[]>({
+    queryKey: ["/api/inventory", { warehouse_id: sourceId }],
+    queryFn: async () => {
+      if (!sourceId) return [];
+      const res = await fetch(`/api/inventory?warehouse_id=${sourceId}`);
+      return res.json();
+    },
+    enabled: !!sourceId,
+  });
+
+  const { data: destInventory } = useQuery<InventoryWithDetails[]>({
+    queryKey: ["/api/inventory", { warehouse_id: destId }],
+    queryFn: async () => {
+      if (!destId) return [];
+      const res = await fetch(`/api/inventory?warehouse_id=${destId}`);
+      return res.json();
+    },
+    enabled: !!destId,
+  });
+
+  const destInventoryMap = useMemo(() => {
+    const map: Record<number, number> = {};
+    if (destInventory) {
+      for (const item of destInventory) {
+        map[item.product_id] = Number(item.quantity);
+      }
+    }
+    return map;
+  }, [destInventory]);
+
+  const buildLines = () => {
+    if (!sourceInventory) return;
+    const newLines: TransferLine[] = sourceInventory
+      .filter((item) => Number(item.quantity) > 0)
+      .map((item) => ({
+        productId: item.product_id,
+        productName: item.productName,
+        unit: item.unit,
+        sourceQty: Number(item.quantity),
+        destQty: destInventoryMap[item.product_id] || 0,
+        transferQty: 0,
+        mode: "transfer" as const,
+        targetQty: destInventoryMap[item.product_id] || 0,
+      }));
+    setLines(newLines);
+  };
+
+  const handleSourceChange = (val: string) => {
+    setSourceId(val);
+    setLines([]);
+  };
+
+  const handleDestChange = (val: string) => {
+    setDestId(val);
+    setLines([]);
+  };
+
+  const updateLine = (index: number, field: "transferQty" | "targetQty" | "mode", value: string | number) => {
+    const updated = [...lines];
+    const line = { ...updated[index] };
+
+    if (field === "mode") {
+      line.mode = value as "transfer" | "target";
+      if (line.mode === "target") {
+        line.targetQty = line.destQty;
+        line.transferQty = 0;
+      } else {
+        line.transferQty = 0;
+      }
+    } else if (field === "transferQty") {
+      const qty = Math.max(0, Math.min(Number(value) || 0, line.sourceQty));
+      line.transferQty = qty;
+      line.targetQty = line.destQty + qty;
+    } else if (field === "targetQty") {
+      const target = Math.max(0, Number(value) || 0);
+      line.targetQty = target;
+      const needed = Math.max(0, target - line.destQty);
+      line.transferQty = Math.min(needed, line.sourceQty);
+    }
+
+    updated[index] = line;
+    setLines(updated);
+  };
+
+  const transferMutation = useMutation({
+    mutationFn: async () => {
+      const items = lines
+        .filter((l) => l.transferQty > 0)
+        .map((l) => ({ productId: l.productId, quantity: l.transferQty }));
+      if (!items.length) throw new Error("No hay articulos para transferir");
+      await apiRequest("POST", "/api/inventory/transfer", {
+        sourceWarehouseId: Number(sourceId),
+        destWarehouseId: Number(destId),
+        items,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Traspaso completado" });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/movements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/summary"] });
+      resetAndClose();
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const resetAndClose = () => {
+    setSourceId("");
+    setDestId("");
+    setLines([]);
+    setOpen(false);
+  };
+
+  const hasTransferItems = lines.some((l) => l.transferQty > 0);
+
+  const sourceName = warehouses?.find((w) => w.id === Number(sourceId))?.name || "";
+  const destName = warehouses?.find((w) => w.id === Number(destId))?.name || "";
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)} data-testid="button-open-transfer">
+        <Repeat2 className="w-4 h-4 mr-2" />
+        Traspaso entre Almacenes
+      </Button>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) resetAndClose(); }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Traspaso entre Almacenes</DialogTitle>
+            <DialogDescription>Transfiere productos de un almacen a otro</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground font-medium">Almacen Origen</Label>
+                <Select value={sourceId} onValueChange={handleSourceChange}>
+                  <SelectTrigger data-testid="select-source-warehouse">
+                    <SelectValue placeholder="Seleccionar origen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses?.filter((w) => String(w.id) !== destId).map((w) => (
+                      <SelectItem key={w.id} value={String(w.id)}>{w.name} {w.storeName ? `(${w.storeName})` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground font-medium">Almacen Destino</Label>
+                <Select value={destId} onValueChange={handleDestChange}>
+                  <SelectTrigger data-testid="select-dest-warehouse">
+                    <SelectValue placeholder="Seleccionar destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses?.filter((w) => String(w.id) !== sourceId).map((w) => (
+                      <SelectItem key={w.id} value={String(w.id)}>{w.name} {w.storeName ? `(${w.storeName})` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {sourceId && destId && !lines.length && (
+              <Button variant="outline" className="w-full" onClick={buildLines} data-testid="button-load-products">
+                Cargar Productos del Almacen Origen
+              </Button>
+            )}
+
+            {lines.length > 0 && (
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-2 font-medium text-muted-foreground">Producto</th>
+                      <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">
+                        <span className="block text-[10px]">Origen</span>
+                        {sourceName}
+                      </th>
+                      <th className="text-center p-2 font-medium text-muted-foreground">Modo</th>
+                      <th className="text-center p-2 font-medium text-muted-foreground">Cantidad</th>
+                      <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">
+                        <span className="block text-[10px]">Destino</span>
+                        {destName}
+                      </th>
+                      <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">Resultante Origen</th>
+                      <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">Resultante Destino</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {lines.map((line, i) => {
+                      const finalSource = line.sourceQty - line.transferQty;
+                      const finalDest = line.destQty + line.transferQty;
+                      return (
+                        <tr key={line.productId} data-testid={`transfer-row-${line.productId}`}>
+                          <td className="p-2">
+                            <span className="font-medium">{line.productName}</span>
+                            <span className="text-xs text-muted-foreground ml-1">({line.unit})</span>
+                          </td>
+                          <td className="p-2 text-right font-mono">{line.sourceQty}</td>
+                          <td className="p-2 text-center">
+                            <Select
+                              value={line.mode}
+                              onValueChange={(v) => updateLine(i, "mode", v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs w-28" data-testid={`select-mode-${line.productId}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="transfer">Transferir</SelectItem>
+                                <SelectItem value="target">Meta destino</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-2 text-center">
+                            {line.mode === "transfer" ? (
+                              <Input
+                                type="number"
+                                min="0"
+                                max={line.sourceQty}
+                                value={line.transferQty || ""}
+                                onChange={(e) => updateLine(i, "transferQty", e.target.value)}
+                                className="w-20 h-8 text-center mx-auto"
+                                placeholder="0"
+                                data-testid={`input-transfer-qty-${line.productId}`}
+                              />
+                            ) : (
+                              <Input
+                                type="number"
+                                min="0"
+                                value={line.targetQty || ""}
+                                onChange={(e) => updateLine(i, "targetQty", e.target.value)}
+                                className="w-20 h-8 text-center mx-auto"
+                                placeholder="0"
+                                data-testid={`input-target-qty-${line.productId}`}
+                              />
+                            )}
+                          </td>
+                          <td className="p-2 text-right font-mono">{line.destQty}</td>
+                          <td className="p-2 text-right">
+                            {line.transferQty > 0 ? (
+                              <span className={`font-mono font-semibold ${finalSource < line.sourceQty ? "text-red-600 dark:text-red-400" : ""}`}>
+                                {finalSource}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground font-mono">-</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-right">
+                            {line.transferQty > 0 ? (
+                              <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                {finalDest}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground font-mono">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {lines.length > 0 && (
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div className="text-sm text-muted-foreground">
+                  {lines.filter((l) => l.transferQty > 0).length} producto(s) a transferir
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={resetAndClose} data-testid="button-cancel-transfer">
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="bg-[#ccdd53]"
+                    onClick={() => transferMutation.mutate()}
+                    disabled={!hasTransferItems || transferMutation.isPending}
+                    data-testid="button-execute-transfer"
+                  >
+                    {transferMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4 mr-2" />
+                    )}
+                    Ejecutar Traspaso
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export default function MovementsPage() {
   const { data: movements, isLoading } = useQuery<MovementWithDetails[]>({
     queryKey: ["/api/inventory/movements"],
@@ -28,11 +368,14 @@ export default function MovementsPage() {
 
   return (
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold" data-testid="text-movements-title">Historial de Movimientos</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Registra todas las entradas, salidas y ajustes de inventario
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" data-testid="text-movements-title">Historial de Movimientos</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Registra todas las entradas, salidas y ajustes de inventario
+          </p>
+        </div>
+        <TransferDialog onSuccess={() => {}} />
       </div>
 
       <Card>

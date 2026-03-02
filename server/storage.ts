@@ -44,6 +44,7 @@ export interface IStorage {
   adjustInventory(id: number, quantity: string, reason?: string): Promise<void>;
   getMovements(limit?: number): Promise<MovementWithDetails[]>;
   createMovement(movement: InsertMovement): Promise<InventoryMovement>;
+  transferInventory(items: { productId: number; quantity: number }[], sourceWarehouseId: number, destWarehouseId: number): Promise<void>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
   getPurchaseOrders(): Promise<PurchaseOrderWithItems[]>;
   getPurchaseOrder(id: number): Promise<PurchaseOrderWithItems | null>;
@@ -281,6 +282,59 @@ export class DatabaseStorage implements IStorage {
   async createMovement(movement: InsertMovement): Promise<InventoryMovement> {
     const [result] = await db.insert(inventoryMovements).values(movement).returning();
     return result;
+  }
+
+  async transferInventory(items: { productId: number; quantity: number }[], sourceWarehouseId: number, destWarehouseId: number): Promise<void> {
+    for (const item of items) {
+      if (item.quantity <= 0) continue;
+
+      const [sourceInv] = await db.select().from(inventory)
+        .where(and(eq(inventory.warehouseId, sourceWarehouseId), eq(inventory.productId, item.productId)));
+      if (!sourceInv) throw new Error(`Producto ID ${item.productId} no existe en almacen origen`);
+
+      const currentQty = Number(sourceInv.quantity);
+      if (item.quantity > currentQty) throw new Error(`Cantidad insuficiente para producto ID ${item.productId}. Disponible: ${currentQty}`);
+
+      await db.update(inventory)
+        .set({ quantity: String(currentQty - item.quantity) })
+        .where(eq(inventory.id, sourceInv.id));
+
+      await db.insert(inventoryMovements).values({
+        warehouseId: sourceWarehouseId,
+        productId: item.productId,
+        movementType: "salida",
+        quantity: String(-item.quantity),
+        unitCost: sourceInv.unitCost,
+        notes: `Traspaso a almacen destino`,
+        referenceType: "transfer",
+      });
+
+      const [destInv] = await db.select().from(inventory)
+        .where(and(eq(inventory.warehouseId, destWarehouseId), eq(inventory.productId, item.productId)));
+
+      if (destInv) {
+        await db.update(inventory)
+          .set({ quantity: String(Number(destInv.quantity) + item.quantity) })
+          .where(eq(inventory.id, destInv.id));
+      } else {
+        await db.insert(inventory).values({
+          warehouseId: destWarehouseId,
+          productId: item.productId,
+          quantity: String(item.quantity),
+          unitCost: sourceInv.unitCost,
+        });
+      }
+
+      await db.insert(inventoryMovements).values({
+        warehouseId: destWarehouseId,
+        productId: item.productId,
+        movementType: "entrada",
+        quantity: String(item.quantity),
+        unitCost: sourceInv.unitCost,
+        notes: `Traspaso desde almacen origen`,
+        referenceType: "transfer",
+      });
+    }
   }
 
   async createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder> {

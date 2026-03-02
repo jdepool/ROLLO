@@ -67,6 +67,7 @@ Preferred communication style: Simple, everyday language.
 - `PATCH /api/inventory/:id` — Adjust inventory quantity
 - `GET /api/inventory/movements` — Movement history
 - `POST /api/inventory/movements` — Record a new movement
+- `POST /api/inventory/transfer` — Transfer products between warehouses (creates paired salida/entrada movements)
 
 ### Key Design Decisions
 

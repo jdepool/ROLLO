@@ -361,6 +361,26 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/inventory/transfer", async (req, res) => {
+    try {
+      const { sourceWarehouseId, destWarehouseId, items } = req.body;
+      if (!sourceWarehouseId || !destWarehouseId) return res.status(400).json({ error: "Se requieren almacen origen y destino" });
+      if (sourceWarehouseId === destWarehouseId) return res.status(400).json({ error: "El almacen origen y destino no pueden ser iguales" });
+      if (!items || !items.length) return res.status(400).json({ error: "Se requiere al menos un articulo" });
+
+      const transferItems = items
+        .filter((i: any) => i.quantity > 0)
+        .map((i: any) => ({ productId: Number(i.productId), quantity: Number(i.quantity) }));
+
+      if (!transferItems.length) return res.status(400).json({ error: "Ningún articulo tiene cantidad mayor a 0" });
+
+      await storage.transferInventory(transferItems, Number(sourceWarehouseId), Number(destWarehouseId));
+      res.json({ message: "Traspaso completado", transferred: transferItems.length });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/purchase-orders/scan", async (req, res) => {
     try {
       const { imageBase64 } = req.body;
