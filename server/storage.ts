@@ -32,6 +32,8 @@ export interface IStorage {
   getMainWarehouse(): Promise<(Warehouse & { storeName?: string | null }) | null>;
   getCategories(): Promise<ProductCategory[]>;
   createCategory(category: InsertCategory): Promise<ProductCategory>;
+  updateCategory(id: number, data: Partial<InsertCategory>): Promise<ProductCategory>;
+  deleteCategory(id: number): Promise<void>;
   getSuppliers(): Promise<Supplier[]>;
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
   getProducts(): Promise<(Product & { categoryName?: string | null; supplierName?: string | null })[]>;
@@ -136,6 +138,16 @@ export class DatabaseStorage implements IStorage {
   async createCategory(category: InsertCategory): Promise<ProductCategory> {
     const [result] = await db.insert(productCategories).values(category).returning();
     return result;
+  }
+
+  async updateCategory(id: number, data: Partial<InsertCategory>): Promise<ProductCategory> {
+    const [result] = await db.update(productCategories).set(data).where(eq(productCategories.id, id)).returning();
+    return result;
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    await db.update(products).set({ categoryId: null }).where(eq(products.categoryId, id));
+    await db.delete(productCategories).where(eq(productCategories.id, id));
   }
 
   async getSuppliers(): Promise<Supplier[]> {

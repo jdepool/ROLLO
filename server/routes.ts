@@ -151,6 +151,28 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/categories/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const parsed = insertCategorySchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      const result = await storage.updateCategory(id, parsed.data);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      await storage.deleteCategory(id);
+      res.json({ message: "Category deleted" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/suppliers", async (_req, res) => {
     try {
       const result = await storage.getSuppliers();
