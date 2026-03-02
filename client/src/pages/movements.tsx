@@ -239,12 +239,12 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
                         <span className="block text-[10px]">Inv. Origen</span>
                         {sourceName}
                       </th>
+                      <th className="text-center p-2 font-medium text-muted-foreground">Cantidad</th>
+                      <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">Resultante Origen</th>
                       <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">
                         <span className="block text-[10px]">Inv. Destino</span>
                         {destName}
                       </th>
-                      <th className="text-center p-2 font-medium text-muted-foreground">Cantidad</th>
-                      <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">Resultante Origen</th>
                       <th className="text-right p-2 font-medium text-muted-foreground whitespace-nowrap">Resultante Destino</th>
                     </tr>
                   </thead>
@@ -259,7 +259,6 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
                             <span className="text-xs text-muted-foreground ml-1">({line.unit})</span>
                           </td>
                           <td className="p-2 text-right font-mono">{line.sourceQty}</td>
-                          <td className="p-2 text-right font-mono">{line.destQty}</td>
                           <td className="p-2 text-center">
                             <Input
                               type="number"
@@ -281,6 +280,7 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
                               <span className="text-muted-foreground font-mono">-</span>
                             )}
                           </td>
+                          <td className="p-2 text-right font-mono">{line.destQty}</td>
                           <td className="p-2 text-right">
                             <Input
                               type="number"
