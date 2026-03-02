@@ -36,7 +36,7 @@ import {
   PenLine,
   Search,
 } from "lucide-react";
-import type { Product, PurchaseOrderWithItems, Warehouse } from "@shared/schema";
+import type { Product, Supplier, PurchaseOrderWithItems, Warehouse } from "@shared/schema";
 
 type ExtractedItem = {
   productName: string;
@@ -170,6 +170,118 @@ function ProductSelector({
   );
 }
 
+function SupplierSelector({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (name: string) => void;
+}) {
+  const [search, setSearch] = useState(value);
+  const [isOpen, setIsOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const { data: suppliers } = useQuery<Supplier[]>({
+    queryKey: ["/api/suppliers"],
+  });
+
+  useEffect(() => {
+    setSearch(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = suppliers?.filter((s) =>
+    s.name.toLowerCase().includes(search.toLowerCase())
+  ) || [];
+
+  const exactMatch = suppliers?.some((s) => s.name.toLowerCase() === search.toLowerCase());
+
+  const handleSelect = (name: string) => {
+    setSearch(name);
+    onChange(name);
+    setIsOpen(false);
+  };
+
+  const handleQuickCreate = async () => {
+    if (!search.trim()) return;
+    setCreating(true);
+    try {
+      await apiRequest("POST", "/api/suppliers", { name: search.trim() });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
+      onChange(search.trim());
+      toast({ title: `Proveedor "${search.trim()}" creado` });
+      setIsOpen(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <div className="relative">
+        <Input
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            onChange(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Buscar proveedor..."
+          data-testid="input-supplier-name"
+        />
+        <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+      </div>
+      {isOpen && (search.length > 0 || filtered.length > 0) && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto" data-testid="supplier-dropdown">
+          {filtered.slice(0, 8).map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex items-center justify-between cursor-pointer"
+              onClick={() => handleSelect(s.name)}
+              data-testid={`supplier-option-${s.id}`}
+            >
+              <span className="truncate">{s.name}</span>
+              {s.contactName && (
+                <span className="text-[10px] text-muted-foreground ml-2 flex-shrink-0">{s.contactName}</span>
+              )}
+            </button>
+          ))}
+          {search.trim() && !exactMatch && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 border-t flex items-center gap-2 text-primary cursor-pointer"
+              onClick={handleQuickCreate}
+              disabled={creating}
+              data-testid="button-quick-create-supplier"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {creating ? "Creando..." : `Crear "${search.trim()}"`}
+            </button>
+          )}
+          {filtered.length === 0 && !search.trim() && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">Sin proveedores</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReviewForm({
   extractedData,
   setExtractedData,
@@ -220,10 +332,9 @@ function ReviewForm({
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Proveedor</Label>
-          <Input
+          <SupplierSelector
             value={extractedData.supplierName || ""}
-            onChange={(e) => setExtractedData({ ...extractedData, supplierName: e.target.value })}
-            data-testid="input-supplier-name"
+            onChange={(name) => setExtractedData({ ...extractedData, supplierName: name })}
           />
         </div>
       </div>
