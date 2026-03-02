@@ -45,6 +45,7 @@ export interface IStorage {
   getMovements(limit?: number): Promise<MovementWithDetails[]>;
   createMovement(movement: InsertMovement): Promise<InventoryMovement>;
   transferInventory(items: { productId: number; quantity: number }[], sourceWarehouseId: number, destWarehouseId: number): Promise<void>;
+  registerProduction(warehouseId: number, inputs: { productId: number; quantity: number }[], outputs: { productId: number; quantity: number; unitCost?: number }[]): Promise<void>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
   getPurchaseOrders(): Promise<PurchaseOrderWithItems[]>;
   getPurchaseOrder(id: number): Promise<PurchaseOrderWithItems | null>;
@@ -87,6 +88,7 @@ export class DatabaseStorage implements IStorage {
         name: warehouses.name,
         location: warehouses.location,
         isMain: warehouses.isMain,
+        type: warehouses.type,
         storeName: stores.name,
       })
       .from(warehouses)
@@ -333,6 +335,67 @@ export class DatabaseStorage implements IStorage {
         unitCost: sourceInv.unitCost,
         notes: `Traspaso desde almacen origen`,
         referenceType: "transfer",
+      });
+    }
+  }
+
+  async registerProduction(
+    warehouseId: number,
+    inputs: { productId: number; quantity: number }[],
+    outputs: { productId: number; quantity: number; unitCost?: number }[]
+  ): Promise<void> {
+    for (const input of inputs) {
+      if (input.quantity <= 0) continue;
+
+      const [inv] = await db.select().from(inventory)
+        .where(and(eq(inventory.warehouseId, warehouseId), eq(inventory.productId, input.productId)));
+      if (!inv) throw new Error(`Producto ID ${input.productId} no existe en este laboratorio`);
+
+      const currentQty = Number(inv.quantity);
+      if (input.quantity > currentQty) throw new Error(`Cantidad insuficiente para producto ID ${input.productId}. Disponible: ${currentQty}`);
+
+      await db.update(inventory)
+        .set({ quantity: String(currentQty - input.quantity) })
+        .where(eq(inventory.id, inv.id));
+
+      await db.insert(inventoryMovements).values({
+        warehouseId,
+        productId: input.productId,
+        movementType: "salida",
+        quantity: String(-input.quantity),
+        unitCost: inv.unitCost,
+        notes: "Consumo en produccion",
+        referenceType: "produccion",
+      });
+    }
+
+    for (const output of outputs) {
+      if (output.quantity <= 0) continue;
+
+      const [existing] = await db.select().from(inventory)
+        .where(and(eq(inventory.warehouseId, warehouseId), eq(inventory.productId, output.productId)));
+
+      if (existing) {
+        await db.update(inventory)
+          .set({ quantity: String(Number(existing.quantity) + output.quantity) })
+          .where(eq(inventory.id, existing.id));
+      } else {
+        await db.insert(inventory).values({
+          warehouseId,
+          productId: output.productId,
+          quantity: String(output.quantity),
+          unitCost: output.unitCost ? String(output.unitCost) : null,
+        });
+      }
+
+      await db.insert(inventoryMovements).values({
+        warehouseId,
+        productId: output.productId,
+        movementType: "entrada",
+        quantity: String(output.quantity),
+        unitCost: output.unitCost ? String(output.unitCost) : null,
+        notes: "Produccion en laboratorio",
+        referenceType: "produccion",
       });
     }
   }

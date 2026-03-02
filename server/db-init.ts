@@ -116,6 +116,10 @@ export async function initDatabase() {
       ALTER TABLE warehouses ADD COLUMN IF NOT EXISTS is_main BOOLEAN DEFAULT false;
     `);
 
+    await db.execute(sql`
+      ALTER TABLE warehouses ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'almacen';
+    `);
+
     console.log("Database tables initialized");
     await seedDatabase();
   } catch (err) {

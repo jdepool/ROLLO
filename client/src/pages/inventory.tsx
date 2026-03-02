@@ -31,6 +31,9 @@ import {
   Clock,
   Pencil,
   Package,
+  FlaskConical,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import type {
   InventoryWithDetails,
@@ -266,6 +269,235 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
   );
 }
 
+type ProductionLine = {
+  productId: string;
+  quantity: string;
+  unitCost?: string;
+};
+
+function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onSuccess: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [inputs, setInputs] = useState<ProductionLine[]>([{ productId: "", quantity: "" }]);
+  const [outputs, setOutputs] = useState<ProductionLine[]>([{ productId: "", quantity: "", unitCost: "" }]);
+  const { toast } = useToast();
+
+  const { data: labInventory } = useQuery<InventoryWithDetails[]>({
+    queryKey: ["/api/inventory", { warehouse_id: String(warehouseId) }],
+    queryFn: async () => {
+      const res = await fetch(`/api/inventory?warehouse_id=${warehouseId}`);
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const { data: allProducts } = useQuery<(Product & { categoryName?: string | null })[]>({
+    queryKey: ["/api/products"],
+    enabled: open,
+  });
+
+  const availableInputProducts = labInventory?.filter((item) => Number(item.quantity) > 0) || [];
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/inventory/production", {
+        warehouseId,
+        inputs: inputs.filter((i) => i.productId && Number(i.quantity) > 0).map((i) => ({
+          productId: Number(i.productId),
+          quantity: Number(i.quantity),
+        })),
+        outputs: outputs.filter((o) => o.productId && Number(o.quantity) > 0).map((o) => ({
+          productId: Number(o.productId),
+          quantity: Number(o.quantity),
+          unitCost: o.unitCost ? Number(o.unitCost) : undefined,
+        })),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Produccion registrada" });
+      resetAndClose();
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const resetAndClose = () => {
+    setInputs([{ productId: "", quantity: "" }]);
+    setOutputs([{ productId: "", quantity: "", unitCost: "" }]);
+    setOpen(false);
+  };
+
+  const updateInput = (index: number, field: keyof ProductionLine, value: string) => {
+    const updated = [...inputs];
+    updated[index] = { ...updated[index], [field]: value };
+    setInputs(updated);
+  };
+
+  const updateOutput = (index: number, field: keyof ProductionLine, value: string) => {
+    const updated = [...outputs];
+    updated[index] = { ...updated[index], [field]: value };
+    setOutputs(updated);
+  };
+
+  const addInput = () => setInputs([...inputs, { productId: "", quantity: "" }]);
+  const removeInput = (i: number) => setInputs(inputs.filter((_, idx) => idx !== i));
+  const addOutput = () => setOutputs([...outputs, { productId: "", quantity: "", unitCost: "" }]);
+  const removeOutput = (i: number) => setOutputs(outputs.filter((_, idx) => idx !== i));
+
+  const hasValidData = inputs.some((i) => i.productId && Number(i.quantity) > 0) ||
+    outputs.some((o) => o.productId && Number(o.quantity) > 0);
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)} data-testid="button-open-production">
+        <FlaskConical className="w-4 h-4 mr-2" />
+        Registrar Produccion
+      </Button>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) resetAndClose(); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="w-5 h-5 text-orange-500" />
+              Registrar Produccion
+            </DialogTitle>
+            <DialogDescription>
+              Registra los insumos consumidos y los productos obtenidos en este laboratorio
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-red-600 dark:text-red-400">Insumos Consumidos (Salidas)</Label>
+                <Button size="sm" variant="outline" onClick={addInput} data-testid="button-add-input">
+                  <Plus className="w-3 h-3 mr-1" /> Agregar
+                </Button>
+              </div>
+              {inputs.map((input, i) => {
+                const selectedInv = availableInputProducts.find((p) => String(p.product_id) === input.productId);
+                return (
+                  <div key={i} className="flex items-end gap-2" data-testid={`production-input-row-${i}`}>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Producto</Label>
+                      <Select value={input.productId} onValueChange={(v) => updateInput(i, "productId", v)}>
+                        <SelectTrigger data-testid={`select-input-product-${i}`}>
+                          <SelectValue placeholder="Seleccionar insumo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableInputProducts.map((inv) => (
+                            <SelectItem key={inv.product_id} value={String(inv.product_id)}>
+                              {inv.productName} ({inv.quantity} {inv.unit} disponibles)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-24 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Cantidad</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max={selectedInv ? Number(selectedInv.quantity) : undefined}
+                        value={input.quantity}
+                        onChange={(e) => updateInput(i, "quantity", e.target.value)}
+                        placeholder="0"
+                        data-testid={`input-input-qty-${i}`}
+                      />
+                    </div>
+                    {selectedInv && (
+                      <span className="text-xs text-muted-foreground pb-2 whitespace-nowrap">{selectedInv.unit}</span>
+                    )}
+                    {inputs.length > 1 && (
+                      <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-destructive" onClick={() => removeInput(i)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="border-t" />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Productos Obtenidos (Entradas)</Label>
+                <Button size="sm" variant="outline" onClick={addOutput} data-testid="button-add-output">
+                  <Plus className="w-3 h-3 mr-1" /> Agregar
+                </Button>
+              </div>
+              {outputs.map((output, i) => (
+                <div key={i} className="flex items-end gap-2" data-testid={`production-output-row-${i}`}>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-muted-foreground">Producto</Label>
+                    <Select value={output.productId} onValueChange={(v) => updateOutput(i, "productId", v)}>
+                      <SelectTrigger data-testid={`select-output-product-${i}`}>
+                        <SelectValue placeholder="Seleccionar producto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allProducts?.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            {p.name} {p.categoryName ? `(${p.categoryName})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-24 space-y-1">
+                    <Label className="text-xs text-muted-foreground">Cantidad</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={output.quantity}
+                      onChange={(e) => updateOutput(i, "quantity", e.target.value)}
+                      placeholder="0"
+                      data-testid={`input-output-qty-${i}`}
+                    />
+                  </div>
+                  <div className="w-28 space-y-1">
+                    <Label className="text-xs text-muted-foreground">Costo Unit.</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={output.unitCost || ""}
+                      onChange={(e) => updateOutput(i, "unitCost", e.target.value)}
+                      placeholder="Opcional"
+                      data-testid={`input-output-cost-${i}`}
+                    />
+                  </div>
+                  {outputs.length > 1 && (
+                    <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-destructive" onClick={() => removeOutput(i)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button variant="outline" onClick={resetAndClose}>Cancelar</Button>
+              <Button
+                onClick={() => mutation.mutate()}
+                disabled={!hasValidData || mutation.isPending}
+                data-testid="button-submit-production"
+              >
+                {mutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FlaskConical className="w-4 h-4 mr-2" />
+                )}
+                Registrar Produccion
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [filterWarehouse, setFilterWarehouse] = useState("all");
@@ -279,9 +511,12 @@ export default function InventoryPage() {
     queryKey: ["/api/warehouses"],
   });
 
+  const selectedWarehouse = warehouses?.find((w) => String(w.id) === filterWarehouse);
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
     queryClient.invalidateQueries({ queryKey: ["/api/inventory/summary"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/inventory/movements"] });
   };
 
   const filtered = inventoryItems?.filter((item) => {
@@ -304,7 +539,12 @@ export default function InventoryPage() {
             Administra tu stock en todos los almacenes
           </p>
         </div>
-        <AddInventoryDialog onSuccess={invalidate} />
+        <div className="flex items-center gap-2">
+          {selectedWarehouse?.type === "laboratorio" && (
+            <ProductionDialog warehouseId={Number(filterWarehouse)} onSuccess={invalidate} />
+          )}
+          <AddInventoryDialog onSuccess={invalidate} />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b" data-testid="warehouse-tabs">
@@ -319,9 +559,10 @@ export default function InventoryPage() {
           <button
             key={w.id}
             onClick={() => setFilterWarehouse(String(w.id))}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${filterWarehouse === String(w.id) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"}`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px flex items-center gap-1.5 ${filterWarehouse === String(w.id) ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"}`}
             data-testid={`tab-warehouse-${w.id}`}
           >
+            {w.type === "laboratorio" && <FlaskConical className="w-3.5 h-3.5 text-orange-500" />}
             {w.name}
           </button>
         ))}

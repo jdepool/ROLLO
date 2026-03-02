@@ -16,6 +16,7 @@ export const warehouses = pgTable("warehouses", {
   name: text("name").notNull(),
   location: text("location"),
   isMain: boolean("is_main").default(false),
+  type: text("type").notNull().default("almacen"),
 });
 
 export const productCategories = pgTable("product_categories", {

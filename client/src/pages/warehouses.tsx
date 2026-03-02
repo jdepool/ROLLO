@@ -34,7 +34,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Warehouse, MapPin, Store, Star, Pencil, Trash2 } from "lucide-react";
+import { Plus, Warehouse, MapPin, Store, Star, Pencil, Trash2, FlaskConical } from "lucide-react";
 import type { Warehouse as WarehouseType, Store as StoreType } from "@shared/schema";
 
 function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -173,6 +173,7 @@ function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseTyp
   const [name, setName] = useState(warehouse.name);
   const [location, setLocation] = useState(warehouse.location || "");
   const [storeId, setStoreId] = useState(String(warehouse.storeId));
+  const [type, setType] = useState(warehouse.type || "almacen");
   const { toast } = useToast();
 
   const { data: stores } = useQuery<StoreType[]>({ queryKey: ["/api/stores"] });
@@ -183,6 +184,7 @@ function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseTyp
         name,
         location: location || null,
         storeId: Number(storeId),
+        type,
       });
     },
     onSuccess: () => {
@@ -200,6 +202,7 @@ function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseTyp
       setName(warehouse.name);
       setLocation(warehouse.location || "");
       setStoreId(String(warehouse.storeId));
+      setType(warehouse.type || "almacen");
     }
     setOpen(isOpen);
   };
@@ -238,6 +241,18 @@ function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseTyp
             <Label>Ubicacion</Label>
             <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Opcional" data-testid="input-edit-warehouse-location" />
           </div>
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger data-testid="select-edit-warehouse-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="almacen">Almacen</SelectItem>
+                <SelectItem value="laboratorio">Laboratorio</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || !storeId || mutation.isPending} data-testid="button-submit-edit-warehouse">
             {mutation.isPending ? "Guardando..." : "Guardar Cambios"}
           </Button>
@@ -253,6 +268,7 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
   const [location, setLocation] = useState("");
   const [storeId, setStoreId] = useState("");
   const [isMain, setIsMain] = useState(false);
+  const [type, setType] = useState("almacen");
   const { toast } = useToast();
 
   const { data: stores } = useQuery<StoreType[]>({ queryKey: ["/api/stores"] });
@@ -264,6 +280,7 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
         location: location || null,
         storeId: Number(storeId),
         isMain,
+        type,
       });
       if (isMain) {
         const wh = await result.json();
@@ -277,6 +294,7 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
       setLocation("");
       setStoreId("");
       setIsMain(false);
+      setType("almacen");
       onSuccess();
     },
     onError: (err: Error) => {
@@ -318,6 +336,18 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
           <div className="space-y-2">
             <Label>Ubicacion</Label>
             <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Opcional" data-testid="input-warehouse-location" />
+          </div>
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger data-testid="select-warehouse-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="almacen">Almacen</SelectItem>
+                <SelectItem value="laboratorio">Laboratorio</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -464,10 +494,20 @@ export default function WarehousesPage() {
                           data-testid={`item-warehouse-${wh.id}`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <Warehouse className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            {(wh as any).type === "laboratorio" ? (
+                              <FlaskConical className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                            ) : (
+                              <Warehouse className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            )}
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm font-medium truncate">{wh.name}</p>
+                                {(wh as any).type === "laboratorio" && (
+                                  <Badge variant="outline" className="text-[10px] gap-1 text-orange-600 border-orange-300">
+                                    <FlaskConical className="w-3 h-3" />
+                                    Lab
+                                  </Badge>
+                                )}
                                 {(wh as any).isMain && (
                                   <Badge variant="secondary" className="text-[10px] gap-1">
                                     <Star className="w-3 h-3" />
