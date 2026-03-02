@@ -365,6 +365,13 @@ export class DatabaseStorage implements IStorage {
     const mfgDate = productionDate || new Date().toISOString().slice(0, 10);
     const dateStr = mfgDate.replace(/-/g, "");
 
+    const [wh] = await db.select().from(warehouses).where(eq(warehouses.id, warehouseId));
+    const whName = wh?.name || "PROD";
+    const words = whName.trim().split(/\s+/);
+    const prefix = words.length >= 2
+      ? (words[0].slice(0, 3) + words.slice(1).join("")).toUpperCase()
+      : words[0].slice(0, 3).toUpperCase();
+
     const countResult = await db.execute(sql`
       SELECT COUNT(*)::int AS cnt FROM inventory_movements
       WHERE reference_type = 'produccion'
@@ -372,7 +379,7 @@ export class DatabaseStorage implements IStorage {
         AND created_at::date = ${mfgDate}::date
     `);
     const seqNum = (Number((countResult.rows[0] as any)?.cnt) || 0) + 1;
-    const batchNumber = `PROD-${dateStr}-${String(seqNum).padStart(3, "0")}`;
+    const batchNumber = `${prefix}-${dateStr}-${String(seqNum).padStart(3, "0")}`;
 
     for (const input of inputs) {
       if (input.quantity <= 0) continue;
