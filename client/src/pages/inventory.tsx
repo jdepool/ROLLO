@@ -617,7 +617,12 @@ export default function InventoryPage() {
         >
           Todos
         </button>
-        {warehouses?.map((w) => (
+        {warehouses?.slice().sort((a, b) => {
+          const order = ["PRINCIPAL", "TEMPORAL", "Laboratorio I", "Laboratorio II", "Producto Intermedio", "Dark Kitchen"];
+          const ai = order.indexOf(a.name);
+          const bi = order.indexOf(b.name);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        }).map((w) => (
           <button
             key={w.id}
             onClick={() => setFilterWarehouse(String(w.id))}
