@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,8 +23,98 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Package, Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Search, Package, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react";
 import type { Product, ProductCategory, Supplier } from "@shared/schema";
+
+const PRESET_UNITS = [
+  { value: "unidad", label: "Unidad" },
+  { value: "kg", label: "Kg" },
+  { value: "lb", label: "Lb" },
+  { value: "lt", label: "Litro" },
+  { value: "oz", label: "Oz" },
+  { value: "ml", label: "mL" },
+  { value: "g", label: "Gramo" },
+  { value: "box", label: "Caja" },
+];
+
+function UnitComboBox({ value, onChange, testId }: { value: string; onChange: (v: string) => void; testId?: string }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const displayLabel = PRESET_UNITS.find((u) => u.value === value)?.label || value || "Seleccionar...";
+
+  const filtered = PRESET_UNITS.filter(
+    (u) => u.label.toLowerCase().includes(search.toLowerCase()) || u.value.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        data-testid={testId}
+        onClick={() => { setOpen(!open); setSearch(""); }}
+        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+      >
+        <span className="truncate">{displayLabel}</span>
+        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md">
+          <Input
+            autoFocus
+            placeholder="Buscar o escribir unidad..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 mb-1"
+            data-testid="input-unit-search"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && search.trim()) {
+                e.preventDefault();
+                const match = PRESET_UNITS.find((u) => u.value === search.trim().toLowerCase() || u.label.toLowerCase() === search.trim().toLowerCase());
+                onChange(match ? match.value : search.trim());
+                setOpen(false);
+              }
+            }}
+          />
+          <div className="max-h-40 overflow-y-auto">
+            {filtered.map((u) => (
+              <button
+                key={u.value}
+                type="button"
+                data-testid={`unit-option-${u.value}`}
+                onClick={() => { onChange(u.value); setOpen(false); }}
+                className={`w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer ${value === u.value ? "bg-accent" : ""}`}
+              >
+                {u.label}
+              </button>
+            ))}
+            {search.trim() && !filtered.some((u) => u.value === search.trim().toLowerCase() || u.label.toLowerCase() === search.trim().toLowerCase()) && (
+              <button
+                type="button"
+                data-testid="unit-option-custom"
+                onClick={() => { onChange(search.trim()); setOpen(false); }}
+                className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer text-primary"
+              >
+                Agregar "{search.trim()}"
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AddProductDialog({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
@@ -90,19 +180,7 @@ function AddProductDialog({ onSuccess }: { onSuccess: () => void }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Unidad</Label>
-              <Select value={unit} onValueChange={setUnit}>
-                <SelectTrigger data-testid="select-unit">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unidad">Unidad</SelectItem>
-                  <SelectItem value="kg">Kg</SelectItem>
-                  <SelectItem value="lb">Lb</SelectItem>
-                  <SelectItem value="lt">Litro</SelectItem>
-                  <SelectItem value="oz">Oz</SelectItem>
-                  <SelectItem value="box">Caja</SelectItem>
-                </SelectContent>
-              </Select>
+              <UnitComboBox value={unit} onChange={setUnit} testId="select-unit" />
             </div>
             <div className="space-y-2">
               <Label>Stock Minimo</Label>
