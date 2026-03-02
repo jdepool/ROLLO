@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,8 +34,9 @@ import {
   FileSpreadsheet,
   Plus,
   PenLine,
+  Search,
 } from "lucide-react";
-import type { PurchaseOrderWithItems, Warehouse } from "@shared/schema";
+import type { Product, PurchaseOrderWithItems, Warehouse } from "@shared/schema";
 
 type ExtractedItem = {
   productName: string;
@@ -54,6 +55,120 @@ type ExtractedData = {
   tax: number | null;
   total: number | null;
 };
+
+function ProductSelector({
+  value,
+  onChange,
+  index,
+}: {
+  value: string;
+  onChange: (name: string) => void;
+  index: number;
+}) {
+  const [search, setSearch] = useState(value);
+  const [isOpen, setIsOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const { data: products } = useQuery<(Product & { categoryName?: string; supplierName?: string })[]>({
+    queryKey: ["/api/products"],
+  });
+
+  useEffect(() => {
+    setSearch(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = products?.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  ) || [];
+
+  const exactMatch = products?.some((p) => p.name.toLowerCase() === search.toLowerCase());
+
+  const handleSelect = (name: string) => {
+    setSearch(name);
+    onChange(name);
+    setIsOpen(false);
+  };
+
+  const handleQuickCreate = async () => {
+    if (!search.trim()) return;
+    setCreating(true);
+    try {
+      await apiRequest("POST", "/api/products", { name: search.trim() });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      onChange(search.trim());
+      toast({ title: `Producto "${search.trim()}" creado` });
+      setIsOpen(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <div className="relative">
+        <Input
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            onChange(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Buscar producto..."
+          data-testid={`input-item-name-${index}`}
+        />
+        <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+      </div>
+      {isOpen && (search.length > 0 || filtered.length > 0) && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto" data-testid={`product-dropdown-${index}`}>
+          {filtered.slice(0, 8).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex items-center justify-between cursor-pointer"
+              onClick={() => handleSelect(p.name)}
+              data-testid={`product-option-${p.id}`}
+            >
+              <span className="truncate">{p.name}</span>
+              {p.categoryName && (
+                <span className="text-[10px] text-muted-foreground ml-2 flex-shrink-0">{p.categoryName}</span>
+              )}
+            </button>
+          ))}
+          {search.trim() && !exactMatch && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 border-t flex items-center gap-2 text-primary cursor-pointer"
+              onClick={handleQuickCreate}
+              disabled={creating}
+              data-testid={`button-quick-create-${index}`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {creating ? "Creando..." : `Crear "${search.trim()}"`}
+            </button>
+          )}
+          {filtered.length === 0 && !search.trim() && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">Sin productos</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ReviewForm({
   extractedData,
@@ -133,11 +248,10 @@ function ReviewForm({
               <div className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-4 space-y-1">
                   {i === 0 && <Label className="text-[10px] text-muted-foreground">Producto</Label>}
-                  <Input
+                  <ProductSelector
                     value={item.productName}
-                    onChange={(e) => updateItem(i, "productName", e.target.value)}
-                    placeholder="Nombre del producto"
-                    data-testid={`input-item-name-${i}`}
+                    onChange={(name) => updateItem(i, "productName", name)}
+                    index={i}
                   />
                 </div>
                 <div className="col-span-2 space-y-1">
