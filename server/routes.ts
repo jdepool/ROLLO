@@ -44,6 +44,28 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/stores/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const parsed = insertStoreSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      const result = await storage.updateStore(id, parsed.data);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/stores/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      await storage.deleteStore(id);
+      res.json({ message: "Store deleted" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/warehouses", async (_req, res) => {
     try {
       const result = await storage.getWarehouses();
@@ -59,6 +81,28 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
       const result = await storage.createWarehouse(parsed.data);
       res.status(201).json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/warehouses/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const parsed = insertWarehouseSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      const result = await storage.updateWarehouse(id, parsed.data);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/warehouses/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      await storage.deleteWarehouse(id);
+      res.json({ message: "Warehouse deleted" });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

@@ -23,8 +23,12 @@ export const db = drizzle(pool);
 export interface IStorage {
   getStores(): Promise<Store[]>;
   createStore(store: InsertStore): Promise<Store>;
+  updateStore(id: number, data: Partial<InsertStore>): Promise<Store>;
+  deleteStore(id: number): Promise<void>;
   getWarehouses(): Promise<(Warehouse & { storeName?: string | null })[]>;
   createWarehouse(warehouse: InsertWarehouse): Promise<Warehouse>;
+  updateWarehouse(id: number, data: Partial<InsertWarehouse>): Promise<Warehouse>;
+  deleteWarehouse(id: number): Promise<void>;
   getMainWarehouse(): Promise<(Warehouse & { storeName?: string | null }) | null>;
   getCategories(): Promise<ProductCategory[]>;
   createCategory(category: InsertCategory): Promise<ProductCategory>;
@@ -56,6 +60,16 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async updateStore(id: number, data: Partial<InsertStore>): Promise<Store> {
+    const [result] = await db.update(stores).set(data).where(eq(stores.id, id)).returning();
+    return result;
+  }
+
+  async deleteStore(id: number): Promise<void> {
+    await db.delete(warehouses).where(eq(warehouses.storeId, id));
+    await db.delete(stores).where(eq(stores.id, id));
+  }
+
   async getWarehouses(): Promise<(Warehouse & { storeName?: string })[]> {
     const rows = await db
       .select({
@@ -74,6 +88,15 @@ export class DatabaseStorage implements IStorage {
   async createWarehouse(warehouse: InsertWarehouse): Promise<Warehouse> {
     const [result] = await db.insert(warehouses).values(warehouse).returning();
     return result;
+  }
+
+  async updateWarehouse(id: number, data: Partial<InsertWarehouse>): Promise<Warehouse> {
+    const [result] = await db.update(warehouses).set(data).where(eq(warehouses.id, id)).returning();
+    return result;
+  }
+
+  async deleteWarehouse(id: number): Promise<void> {
+    await db.delete(warehouses).where(eq(warehouses.id, id));
   }
 
   async getMainWarehouse(): Promise<(Warehouse & { storeName?: string }) | null> {

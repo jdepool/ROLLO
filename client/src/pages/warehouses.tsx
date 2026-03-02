@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -20,10 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Warehouse, MapPin, Store, Star } from "lucide-react";
+import { Plus, Warehouse, MapPin, Store, Star, Pencil, Trash2 } from "lucide-react";
 import type { Warehouse as WarehouseType, Store as StoreType } from "@shared/schema";
 
 function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -65,6 +76,7 @@ function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>New Store</DialogTitle>
+          <DialogDescription>Add a new store location</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
@@ -81,6 +93,153 @@ function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
           </div>
           <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || mutation.isPending} data-testid="button-submit-store">
             {mutation.isPending ? "Creating..." : "Create Store"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditStoreDialog({ store, onSuccess }: { store: StoreType; onSuccess: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(store.name);
+  const [address, setAddress] = useState(store.address || "");
+  const [phone, setPhone] = useState(store.phone || "");
+  const { toast } = useToast();
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PUT", `/api/stores/${store.id}`, {
+        name,
+        address: address || null,
+        phone: phone || null,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Store updated" });
+      setOpen(false);
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) {
+      setName(store.name);
+      setAddress(store.address || "");
+      setPhone(store.phone || "");
+    }
+    setOpen(isOpen);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" data-testid={`button-edit-store-${store.id}`}>
+          <Pencil className="w-4 h-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Edit Store</DialogTitle>
+          <DialogDescription>Modify store details</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Store name" data-testid="input-edit-store-name" />
+          </div>
+          <div className="space-y-2">
+            <Label>Address</Label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Optional" data-testid="input-edit-store-address" />
+          </div>
+          <div className="space-y-2">
+            <Label>Phone</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" data-testid="input-edit-store-phone" />
+          </div>
+          <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || mutation.isPending} data-testid="button-submit-edit-store">
+            {mutation.isPending ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseType & { storeName?: string }; onSuccess: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(warehouse.name);
+  const [location, setLocation] = useState(warehouse.location || "");
+  const [storeId, setStoreId] = useState(String(warehouse.storeId));
+  const { toast } = useToast();
+
+  const { data: stores } = useQuery<StoreType[]>({ queryKey: ["/api/stores"] });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PUT", `/api/warehouses/${warehouse.id}`, {
+        name,
+        location: location || null,
+        storeId: Number(storeId),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Warehouse updated" });
+      setOpen(false);
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) {
+      setName(warehouse.name);
+      setLocation(warehouse.location || "");
+      setStoreId(String(warehouse.storeId));
+    }
+    setOpen(isOpen);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid={`button-edit-warehouse-${warehouse.id}`}>
+          <Pencil className="w-3.5 h-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Edit Warehouse</DialogTitle>
+          <DialogDescription>Modify warehouse details</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div className="space-y-2">
+            <Label>Store</Label>
+            <Select value={storeId} onValueChange={setStoreId}>
+              <SelectTrigger data-testid="select-edit-warehouse-store">
+                <SelectValue placeholder="Select store" />
+              </SelectTrigger>
+              <SelectContent>
+                {stores?.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Warehouse name" data-testid="input-edit-warehouse-name" />
+          </div>
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional" data-testid="input-edit-warehouse-location" />
+          </div>
+          <Button className="w-full" onClick={() => mutation.mutate()} disabled={!name || !storeId || mutation.isPending} data-testid="button-submit-edit-warehouse">
+            {mutation.isPending ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </DialogContent>
@@ -136,6 +295,7 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>New Warehouse</DialogTitle>
+          <DialogDescription>Add a new warehouse location</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
@@ -185,6 +345,8 @@ export default function WarehousesPage() {
     queryKey: ["/api/warehouses"],
   });
   const { toast } = useToast();
+  const [deleteStoreId, setDeleteStoreId] = useState<number | null>(null);
+  const [deleteWarehouseId, setDeleteWarehouseId] = useState<number | null>(null);
 
   const setMainMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -196,12 +358,43 @@ export default function WarehousesPage() {
     },
   });
 
+  const deleteStoreMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/stores/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Store deleted" });
+      setDeleteStoreId(null);
+      invalidate();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteWarehouseMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/warehouses/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Warehouse deleted" });
+      setDeleteWarehouseId(null);
+      invalidate();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/stores"] });
     queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
   };
 
   const isLoading = storesLoading || warehousesLoading;
+
+  const deleteStoreName = stores?.find((s) => s.id === deleteStoreId)?.name;
+  const deleteWarehouseName = warehouses?.find((w) => w.id === deleteWarehouseId)?.name;
 
   return (
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
@@ -241,11 +434,23 @@ export default function WarehousesPage() {
                     <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Store className="w-5 h-5 text-primary" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="font-semibold">{store.name}</p>
                       {store.address && (
                         <p className="text-xs text-muted-foreground">{store.address}</p>
                       )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <EditStoreDialog store={store} onSuccess={invalidate} />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteStoreId(store.id)}
+                        data-testid={`button-delete-store-${store.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                   {!storeWarehouses.length ? (
@@ -278,18 +483,30 @@ export default function WarehousesPage() {
                               )}
                             </div>
                           </div>
-                          {!(wh as any).isMain && (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <EditWarehouseDialog warehouse={wh} onSuccess={invalidate} />
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-xs flex-shrink-0"
-                              onClick={() => setMainMutation.mutate(wh.id)}
-                              disabled={setMainMutation.isPending}
-                              data-testid={`button-set-main-${wh.id}`}
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteWarehouseId(wh.id)}
+                              data-testid={`button-delete-warehouse-${wh.id}`}
                             >
-                              Set Main
+                              <Trash2 className="w-3.5 h-3.5" />
                             </Button>
-                          )}
+                            {!(wh as any).isMain && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs flex-shrink-0"
+                                onClick={() => setMainMutation.mutate(wh.id)}
+                                disabled={setMainMutation.isPending}
+                                data-testid={`button-set-main-${wh.id}`}
+                              >
+                                Set Main
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -300,6 +517,48 @@ export default function WarehousesPage() {
           })}
         </div>
       )}
+
+      <AlertDialog open={deleteStoreId !== null} onOpenChange={(open) => !open && setDeleteStoreId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Store</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteStoreName}"? This will also delete all warehouses assigned to this store. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-store">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteStoreId && deleteStoreMutation.mutate(deleteStoreId)}
+              data-testid="button-confirm-delete-store"
+            >
+              {deleteStoreMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteWarehouseId !== null} onOpenChange={(open) => !open && setDeleteWarehouseId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Warehouse</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteWarehouseName}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-warehouse">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteWarehouseId && deleteWarehouseMutation.mutate(deleteWarehouseId)}
+              data-testid="button-confirm-delete-warehouse"
+            >
+              {deleteWarehouseMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
