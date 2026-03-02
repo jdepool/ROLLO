@@ -341,6 +341,7 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
   const [open, setOpen] = useState(false);
   const [inputs, setInputs] = useState<ProductionLine[]>([{ productId: "", quantity: "" }]);
   const [outputs, setOutputs] = useState<ProductionLine[]>([{ productId: "", quantity: "", unitCost: "" }]);
+  const [productionDate, setProductionDate] = useState(new Date().toISOString().slice(0, 10));
   const { toast } = useToast();
 
   const { data: labInventory } = useQuery<InventoryWithDetails[]>({
@@ -361,8 +362,9 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
 
   const mutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/inventory/production", {
+      const res = await apiRequest("POST", "/api/inventory/production", {
         warehouseId,
+        productionDate,
         inputs: inputs.filter((i) => i.productId && Number(i.quantity) > 0).map((i) => ({
           productId: Number(i.productId),
           quantity: Number(i.quantity),
@@ -373,9 +375,10 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
           unitCost: o.unitCost ? Number(o.unitCost) : undefined,
         })),
       });
+      return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "Produccion registrada" });
+    onSuccess: (data: any) => {
+      toast({ title: "Produccion registrada", description: `Lote: ${data.batchNumber}` });
       resetAndClose();
       onSuccess();
     },
@@ -387,6 +390,7 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
   const resetAndClose = () => {
     setInputs([{ productId: "", quantity: "" }]);
     setOutputs([{ productId: "", quantity: "", unitCost: "" }]);
+    setProductionDate(new Date().toISOString().slice(0, 10));
     setOpen(false);
   };
 
@@ -429,6 +433,16 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
           </DialogHeader>
 
           <div className="space-y-6">
+            <div className="space-y-2">
+              <Label>Fecha de Produccion</Label>
+              <Input
+                type="date"
+                value={productionDate}
+                onChange={(e) => setProductionDate(e.target.value)}
+                data-testid="input-production-date"
+              />
+            </div>
+
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-semibold text-red-600 dark:text-red-400">Insumos Consumidos (Salidas)</Label>
@@ -710,14 +724,14 @@ export default function InventoryPage() {
                         {Number(item.quantity)} <span className="text-muted-foreground font-normal">{item.unit}</span>
                       </td>
                       <td className="px-5 py-3 text-right font-mono">
-                        {item.unitCost ? `$${Number(item.unitCost).toFixed(2)}` : "-"}
+                        {(item as any).unit_cost ? `$${Number((item as any).unit_cost).toFixed(2)}` : "-"}
                       </td>
                       <td className="px-5 py-3 text-muted-foreground font-mono text-xs">
-                        {item.batchNumber || "-"}
+                        {(item as any).batch_number || "-"}
                       </td>
                       <td className="px-5 py-3 text-muted-foreground text-xs">
-                        {item.expiryDate
-                          ? new Date(item.expiryDate).toLocaleDateString("es-MX", { month: "short", day: "numeric", year: "numeric" })
+                        {(item as any).expiry_date
+                          ? new Date((item as any).expiry_date).toLocaleDateString("es-MX", { month: "short", day: "numeric", year: "numeric" })
                           : "-"}
                       </td>
                       <td className="px-5 py-3">

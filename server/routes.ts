@@ -392,7 +392,7 @@ export async function registerRoutes(
 
   app.post("/api/inventory/production", async (req, res) => {
     try {
-      const { warehouseId, inputs, outputs } = req.body;
+      const { warehouseId, inputs, outputs, productionDate } = req.body;
       if (!warehouseId) return res.status(400).json({ error: "Se requiere un laboratorio" });
       if (!inputs?.length && !outputs?.length) return res.status(400).json({ error: "Se requiere al menos un insumo o un producto" });
 
@@ -407,8 +407,8 @@ export async function registerRoutes(
         .filter((o: any) => Number(o.quantity) > 0)
         .map((o: any) => ({ productId: Number(o.productId), quantity: Number(o.quantity), unitCost: o.unitCost ? Number(o.unitCost) : undefined }));
 
-      await storage.registerProduction(Number(warehouseId), parsedInputs, parsedOutputs);
-      res.json({ message: "Produccion registrada", inputs: parsedInputs.length, outputs: parsedOutputs.length });
+      const result = await storage.registerProduction(Number(warehouseId), parsedInputs, parsedOutputs, productionDate || undefined);
+      res.json({ message: "Produccion registrada", inputs: parsedInputs.length, outputs: parsedOutputs.length, batchNumber: result.batchNumber });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

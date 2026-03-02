@@ -46,7 +46,7 @@ export interface IStorage {
   getMovements(limit?: number): Promise<MovementWithDetails[]>;
   createMovement(movement: InsertMovement): Promise<InventoryMovement>;
   transferInventory(items: { productId: number; quantity: number }[], sourceWarehouseId: number, destWarehouseId: number): Promise<void>;
-  registerProduction(warehouseId: number, inputs: { productId: number; quantity: number }[], outputs: { productId: number; quantity: number; unitCost?: number }[]): Promise<void>;
+  registerProduction(warehouseId: number, inputs: { productId: number; quantity: number }[], outputs: { productId: number; quantity: number; unitCost?: number }[], productionDate?: string): Promise<{ batchNumber: string }>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
   getPurchaseOrders(): Promise<PurchaseOrderWithItems[]>;
   getPurchaseOrder(id: number): Promise<PurchaseOrderWithItems | null>;
@@ -359,8 +359,21 @@ export class DatabaseStorage implements IStorage {
   async registerProduction(
     warehouseId: number,
     inputs: { productId: number; quantity: number }[],
-    outputs: { productId: number; quantity: number; unitCost?: number }[]
-  ): Promise<void> {
+    outputs: { productId: number; quantity: number; unitCost?: number }[],
+    productionDate?: string
+  ): Promise<{ batchNumber: string }> {
+    const mfgDate = productionDate || new Date().toISOString().slice(0, 10);
+    const dateStr = mfgDate.replace(/-/g, "");
+
+    const countResult = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt FROM inventory_movements
+      WHERE reference_type = 'produccion'
+        AND movement_type = 'entrada'
+        AND created_at::date = ${mfgDate}::date
+    `);
+    const seqNum = (Number((countResult.rows[0] as any)?.cnt) || 0) + 1;
+    const batchNumber = `PROD-${dateStr}-${String(seqNum).padStart(3, "0")}`;
+
     for (const input of inputs) {
       if (input.quantity <= 0) continue;
 
@@ -381,7 +394,7 @@ export class DatabaseStorage implements IStorage {
         movementType: "salida",
         quantity: String(-input.quantity),
         unitCost: inv.unitCost,
-        notes: "Consumo en produccion",
+        notes: `Consumo en produccion - Lote: ${batchNumber}`,
         referenceType: "produccion",
       });
     }
@@ -394,7 +407,11 @@ export class DatabaseStorage implements IStorage {
 
       if (existing) {
         await db.update(inventory)
-          .set({ quantity: String(Number(existing.quantity) + output.quantity) })
+          .set({
+            quantity: String(Number(existing.quantity) + output.quantity),
+            manufactureDate: mfgDate,
+            batchNumber,
+          })
           .where(eq(inventory.id, existing.id));
       } else {
         await db.insert(inventory).values({
@@ -402,6 +419,8 @@ export class DatabaseStorage implements IStorage {
           productId: output.productId,
           quantity: String(output.quantity),
           unitCost: output.unitCost ? String(output.unitCost) : null,
+          manufactureDate: mfgDate,
+          batchNumber,
         });
       }
 
@@ -411,10 +430,12 @@ export class DatabaseStorage implements IStorage {
         movementType: "entrada",
         quantity: String(output.quantity),
         unitCost: output.unitCost ? String(output.unitCost) : null,
-        notes: "Produccion en laboratorio",
+        notes: `Produccion en laboratorio - Lote: ${batchNumber}`,
         referenceType: "produccion",
       });
     }
+
+    return { batchNumber };
   }
 
   async createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder> {

@@ -69,6 +69,7 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/inventory/movements` — Movement history
 - `POST /api/inventory/movements` — Record a new movement
 - `POST /api/inventory/transfer` — Transfer products between warehouses (creates paired salida/entrada movements)
+- `POST /api/inventory/production` — Register lab production (consumes inputs, creates outputs with auto-generated batch number PROD-YYYYMMDD-NNN and manufacture date)
 
 ### Key Design Decisions
 
