@@ -390,6 +390,27 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/inventory/sale", async (req, res) => {
+    try {
+      const { warehouseId, items, notes } = req.body;
+      if (!warehouseId) return res.status(400).json({ error: "Se requiere un almacen" });
+      if (!items?.length) return res.status(400).json({ error: "Se requiere al menos un producto" });
+
+      const allWarehouses = await storage.getWarehouses();
+      const wh = allWarehouses.find((w) => w.id === Number(warehouseId));
+      if (!wh || wh.type !== "venta") return res.status(400).json({ error: "El almacen seleccionado no es de tipo venta" });
+
+      const parsedItems = items
+        .filter((i: any) => Number(i.quantity) > 0)
+        .map((i: any) => ({ productId: Number(i.productId), quantity: Number(i.quantity) }));
+
+      await storage.registerSale(Number(warehouseId), parsedItems, notes || undefined);
+      res.json({ message: "Venta registrada", items: parsedItems.length });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/inventory/production", async (req, res) => {
     try {
       const { warehouseId, inputs, outputs, productionDate } = req.body;

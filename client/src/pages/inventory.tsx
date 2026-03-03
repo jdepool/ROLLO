@@ -32,6 +32,7 @@ import {
   Pencil,
   Package,
   FlaskConical,
+  ShoppingBag,
   Trash2,
   Loader2,
 } from "lucide-react";
@@ -337,6 +338,142 @@ type ProductionLine = {
   unitCost?: string;
 };
 
+function SaleDialog({ warehouseId, onSuccess }: { warehouseId: number; onSuccess: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<{ productId: string; quantity: string }[]>([{ productId: "", quantity: "" }]);
+  const [notes, setNotes] = useState("");
+  const { toast } = useToast();
+
+  const { data: inventoryData } = useQuery<InventoryWithDetails[]>({
+    queryKey: ["/api/inventory", { warehouseId }],
+    queryFn: async () => {
+      const res = await fetch(`/api/inventory?warehouseId=${warehouseId}`);
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/inventory/sale", {
+        warehouseId,
+        items: items.filter(i => i.productId && Number(i.quantity) > 0),
+        notes,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Venta registrada" });
+      setItems([{ productId: "", quantity: "" }]);
+      setNotes("");
+      setOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/movements"] });
+      onSuccess();
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const addItem = () => setItems([...items, { productId: "", quantity: "" }]);
+  const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, field: string, value: string) => {
+    const updated = [...items];
+    (updated[idx] as any)[field] = value;
+    setItems(updated);
+  };
+
+  const availableProducts = inventoryData?.filter(inv => Number(inv.quantity) > 0) || [];
+
+  const hasValidItems = items.some(i => i.productId && Number(i.quantity) > 0);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => {
+      setOpen(v);
+      if (!v) {
+        setItems([{ productId: "", quantity: "" }]);
+        setNotes("");
+      }
+    }}>
+      <DialogTrigger asChild>
+        <Button variant="default" className="gap-2 bg-green-600 hover:bg-green-700" data-testid="button-open-sale">
+          <ShoppingBag className="w-4 h-4" />
+          Registrar Venta
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle data-testid="text-sale-dialog-title">Registrar Venta</DialogTitle>
+          <DialogDescription>Registra la salida de productos por venta</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <Label className="font-semibold">Productos</Label>
+            {items.map((item, idx) => (
+              <div key={idx} className="flex items-end gap-2">
+                <div className="flex-1 space-y-1">
+                  {idx === 0 && <Label className="text-xs text-muted-foreground">Producto</Label>}
+                  <Select value={item.productId} onValueChange={(v) => updateItem(idx, "productId", v)}>
+                    <SelectTrigger data-testid={`select-sale-product-${idx}`}>
+                      <SelectValue placeholder="Seleccionar producto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProducts.map((inv) => (
+                        <SelectItem key={inv.id} value={String((inv as any).product_id || inv.productId)}>
+                          {inv.productName} ({Number(inv.quantity)} {inv.unit || "u"})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-24 space-y-1">
+                  {idx === 0 && <Label className="text-xs text-muted-foreground">Cantidad</Label>}
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="0"
+                    value={item.quantity}
+                    onChange={(e) => updateItem(idx, "quantity", e.target.value)}
+                    data-testid={`input-sale-qty-${idx}`}
+                  />
+                </div>
+                {items.length > 1 && (
+                  <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-9 w-9" data-testid={`button-remove-sale-item-${idx}`}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={addItem} className="gap-1" data-testid="button-add-sale-item">
+              <Plus className="w-3.5 h-3.5" /> Agregar producto
+            </Button>
+          </div>
+          <div className="space-y-1">
+            <Label>Notas (opcional)</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notas de la venta..."
+              data-testid="input-sale-notes"
+            />
+          </div>
+          <Button
+            className="w-full gap-2 bg-green-600 hover:bg-green-700"
+            onClick={() => mutation.mutate()}
+            disabled={!hasValidItems || mutation.isPending}
+            data-testid="button-submit-sale"
+          >
+            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+            {mutation.isPending ? "Registrando..." : "Registrar Venta"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
   const [inputs, setInputs] = useState<ProductionLine[]>([{ productId: "", quantity: "" }]);
@@ -619,6 +756,9 @@ export default function InventoryPage() {
           {selectedWarehouse?.type === "laboratorio" && (
             <ProductionDialog warehouseId={Number(filterWarehouse)} onSuccess={invalidate} />
           )}
+          {selectedWarehouse?.type === "venta" && (
+            <SaleDialog warehouseId={Number(filterWarehouse)} onSuccess={invalidate} />
+          )}
           <AddInventoryDialog onSuccess={invalidate} />
         </div>
       </div>
@@ -644,6 +784,7 @@ export default function InventoryPage() {
             data-testid={`tab-warehouse-${w.id}`}
           >
             {w.type === "laboratorio" && <FlaskConical className="w-3.5 h-3.5 text-orange-500" />}
+            {w.type === "venta" && <ShoppingBag className="w-3.5 h-3.5 text-green-500" />}
             {w.name}
           </button>
         ))}

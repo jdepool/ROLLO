@@ -45,12 +45,12 @@ Preferred communication style: Simple, everyday language.
 - **Schema Location**: `shared/schema.ts` — defines all tables and insert schemas
 - **Key Tables**:
   - `stores` — Physical store locations
-  - `warehouses` — Storage areas within stores
+  - `warehouses` — Storage areas within stores (type: "almacen" | "laboratorio" | "venta")
   - `product_categories` — Product categorization with color/icon
   - `suppliers` — Vendor/supplier information
   - `products` — Product catalog with min stock, cost price, shelf life, category/supplier references
   - `inventory` — Current stock levels per warehouse/product with expiry dates, batch numbers, unit costs
-  - `inventory_movements` — Audit trail of all stock changes (entrada/salida/ajuste/merma via referenceType)
+  - `inventory_movements` — Audit trail of all stock changes (entrada/salida/ajuste/merma/venta via referenceType)
 - **Schema Push**: Use `npm run db:push` (drizzle-kit push) to sync schema to database
 
 ### API Endpoints
@@ -69,7 +69,8 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/inventory/movements` — Movement history
 - `POST /api/inventory/movements` — Record a new movement
 - `POST /api/inventory/transfer` — Transfer products between warehouses (creates paired salida/entrada movements)
-- `POST /api/inventory/production` — Register lab production (consumes inputs, creates outputs with auto-generated batch number PROD-YYYYMMDD-NNN and manufacture date)
+- `POST /api/inventory/sale` — Register sales from venta-type warehouses (creates salida movements with referenceType "venta")
+- `POST /api/inventory/production` — Register lab production (consumes inputs, creates outputs with auto-generated batch number based on warehouse name and manufacture date)
 
 ### Key Design Decisions
 

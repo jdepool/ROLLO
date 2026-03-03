@@ -34,7 +34,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Warehouse, MapPin, Store, Star, Pencil, Trash2, FlaskConical } from "lucide-react";
+import { Plus, Warehouse, MapPin, Store, Star, Pencil, Trash2, FlaskConical, ShoppingBag } from "lucide-react";
 import type { Warehouse as WarehouseType, Store as StoreType } from "@shared/schema";
 
 function AddStoreDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -250,6 +250,7 @@ function EditWarehouseDialog({ warehouse, onSuccess }: { warehouse: WarehouseTyp
               <SelectContent>
                 <SelectItem value="almacen">Almacen</SelectItem>
                 <SelectItem value="laboratorio">Laboratorio</SelectItem>
+                <SelectItem value="venta">Venta</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -346,6 +347,7 @@ function AddWarehouseDialog({ onSuccess }: { onSuccess: () => void }) {
               <SelectContent>
                 <SelectItem value="almacen">Almacen</SelectItem>
                 <SelectItem value="laboratorio">Laboratorio</SelectItem>
+                <SelectItem value="venta">Venta</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -496,6 +498,8 @@ export default function WarehousesPage() {
                           <div className="flex items-center gap-3 min-w-0">
                             {(wh as any).type === "laboratorio" ? (
                               <FlaskConical className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                            ) : (wh as any).type === "venta" ? (
+                              <ShoppingBag className="w-4 h-4 text-green-500 flex-shrink-0" />
                             ) : (
                               <Warehouse className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                             )}
@@ -506,6 +510,12 @@ export default function WarehousesPage() {
                                   <Badge variant="outline" className="text-[10px] gap-1 text-orange-600 border-orange-300">
                                     <FlaskConical className="w-3 h-3" />
                                     Lab
+                                  </Badge>
+                                )}
+                                {(wh as any).type === "venta" && (
+                                  <Badge variant="outline" className="text-[10px] gap-1 text-green-600 border-green-300">
+                                    <ShoppingBag className="w-3 h-3" />
+                                    Venta
                                   </Badge>
                                 )}
                                 {(wh as any).isMain && (

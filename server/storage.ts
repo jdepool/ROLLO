@@ -47,6 +47,7 @@ export interface IStorage {
   createMovement(movement: InsertMovement): Promise<InventoryMovement>;
   transferInventory(items: { productId: number; quantity: number }[], sourceWarehouseId: number, destWarehouseId: number): Promise<void>;
   registerProduction(warehouseId: number, inputs: { productId: number; quantity: number }[], outputs: { productId: number; quantity: number; unitCost?: number }[], productionDate?: string): Promise<{ batchNumber: string }>;
+  registerSale(warehouseId: number, items: { productId: number; quantity: number }[], notes?: string): Promise<void>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
   getPurchaseOrders(): Promise<PurchaseOrderWithItems[]>;
   getPurchaseOrder(id: number): Promise<PurchaseOrderWithItems | null>;
@@ -443,6 +444,37 @@ export class DatabaseStorage implements IStorage {
     }
 
     return { batchNumber };
+  }
+
+  async registerSale(
+    warehouseId: number,
+    items: { productId: number; quantity: number }[],
+    notes?: string
+  ): Promise<void> {
+    for (const item of items) {
+      if (item.quantity <= 0) continue;
+
+      const [inv] = await db.select().from(inventory)
+        .where(and(eq(inventory.warehouseId, warehouseId), eq(inventory.productId, item.productId)));
+      if (!inv) throw new Error(`Producto ID ${item.productId} no existe en este almacen`);
+
+      const currentQty = Number(inv.quantity);
+      if (item.quantity > currentQty) throw new Error(`Cantidad insuficiente para producto ID ${item.productId}. Disponible: ${currentQty}`);
+
+      await db.update(inventory)
+        .set({ quantity: String(currentQty - item.quantity) })
+        .where(eq(inventory.id, inv.id));
+
+      await db.insert(inventoryMovements).values({
+        warehouseId,
+        productId: item.productId,
+        movementType: "salida",
+        quantity: String(-item.quantity),
+        unitCost: inv.unitCost,
+        notes: notes || "Venta registrada",
+        referenceType: "venta",
+      });
+    }
   }
 
   async createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder> {
