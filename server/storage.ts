@@ -210,7 +210,13 @@ export class DatabaseStorage implements IStorage {
         w.name AS "warehouseName",
         st.name AS "storeName",
         CASE WHEN CAST(i.quantity AS numeric) <= CAST(COALESCE(i.min_stock, p.min_stock) AS numeric) THEN true ELSE false END AS "isLowStock",
-        CASE WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '3 days' THEN true ELSE false END AS "expiringSoon"
+        CASE WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '3 days' THEN true ELSE false END AS "expiringSoon",
+        (
+          SELECT im.unit_cost FROM inventory_movements im
+          WHERE im.warehouse_id = i.warehouse_id AND im.product_id = i.product_id
+            AND im.movement_type = 'entrada' AND im.unit_cost IS NOT NULL
+          ORDER BY im.created_at DESC LIMIT 1
+        ) AS "lifoUnitCost"
       FROM inventory i
       JOIN products p ON p.id = i.product_id
       LEFT JOIN product_categories pc ON pc.id = p.category_id
@@ -227,7 +233,14 @@ export class DatabaseStorage implements IStorage {
     const result = await db.execute(sql`
       SELECT
         COUNT(DISTINCT i.product_id)::int AS "totalProducts",
-        COALESCE(SUM(CAST(i.quantity AS numeric) * COALESCE(CAST(i.unit_cost AS numeric), CAST(p.cost_price AS numeric))), 0) AS "totalValue",
+        COALESCE(SUM(CAST(i.quantity AS numeric) * COALESCE(
+          (SELECT im.unit_cost::numeric FROM inventory_movements im
+           WHERE im.warehouse_id = i.warehouse_id AND im.product_id = i.product_id
+             AND im.movement_type = 'entrada' AND im.unit_cost IS NOT NULL
+           ORDER BY im.created_at DESC LIMIT 1),
+          CAST(i.unit_cost AS numeric),
+          CAST(p.cost_price AS numeric)
+        )), 0) AS "totalValue",
         COUNT(CASE WHEN CAST(i.quantity AS numeric) <= CAST(COALESCE(i.min_stock, p.min_stock) AS numeric) AND CAST(i.quantity AS numeric) > 0 THEN 1 END)::int AS "lowStockCount",
         COUNT(CASE WHEN CAST(i.quantity AS numeric) = 0 THEN 1 END)::int AS "outOfStockCount",
         COUNT(CASE WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '3 days' THEN 1 END)::int AS "expiringSoonCount"

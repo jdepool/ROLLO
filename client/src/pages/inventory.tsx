@@ -914,7 +914,10 @@ export default function InventoryPage() {
                         {Number(item.minStock || 0)}
                       </td>
                       <td className="px-5 py-3 text-right font-mono">
-                        {(item as any).unit_cost ? `$${Number((item as any).unit_cost).toFixed(2)}` : "-"}
+                        {(() => {
+                          const cost = (item as any).lifoUnitCost || (item as any).unit_cost;
+                          return cost ? `$${Number(cost).toFixed(2)}` : "-";
+                        })()}
                       </td>
                       <td className="px-5 py-3 text-muted-foreground font-mono text-xs">
                         {(item as any).batch_number || "-"}
