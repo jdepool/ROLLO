@@ -29,7 +29,7 @@ import { useTheme } from "@/components/theme-provider";
 
 const mainNav = [
   { title: "Panel", url: "/", icon: LayoutDashboard },
-  { title: "Ordenes de Compra", url: "/purchase-orders", icon: FileText },
+  { title: "Compras", url: "/purchase-orders", icon: FileText },
   { title: "Inventario", url: "/inventory", icon: Boxes },
   { title: "Movimientos", url: "/movements", icon: ArrowRightLeft },
 ];

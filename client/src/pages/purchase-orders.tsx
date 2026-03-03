@@ -648,13 +648,13 @@ function CreatePODialog({ onSuccess }: { onSuccess: () => void }) {
     <>
       <Button className="bg-[#ccdd53]" onClick={() => setOpen(true)} data-testid="button-create-po">
         <Plus className="w-4 h-4 mr-2" />
-        Nueva Orden de Compra
+        Nueva Factura
       </Button>
       <Dialog open={open} onOpenChange={(v) => { if (!v) resetAndClose(); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {mode === "choose" && "Nueva Orden de Compra"}
+              {mode === "choose" && "Nueva Factura"}
               {mode === "scan-upload" && "Escanear Imagen"}
               {mode === "scanning" && "Escaneando Documento..."}
               {mode === "excel-upload" && "Importar Excel/CSV"}
