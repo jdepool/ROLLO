@@ -425,13 +425,18 @@ export async function registerRoutes(
 
   app.post("/api/inventory/production", async (req, res) => {
     try {
-      const { warehouseId, inputs, outputs, productionDate } = req.body;
+      const { warehouseId, inputs, outputs, productionDate, destWarehouseId } = req.body;
       if (!warehouseId) return res.status(400).json({ error: "Se requiere un laboratorio" });
       if (!inputs?.length && !outputs?.length) return res.status(400).json({ error: "Se requiere al menos un insumo o un producto" });
 
       const allWarehouses = await storage.getWarehouses();
       const wh = allWarehouses.find((w) => w.id === Number(warehouseId));
       if (!wh || wh.type !== "laboratorio") return res.status(400).json({ error: "El almacen seleccionado no es un laboratorio" });
+
+      if (destWarehouseId) {
+        const destWh = allWarehouses.find((w) => w.id === Number(destWarehouseId));
+        if (!destWh) return res.status(400).json({ error: "El almacen destino no existe" });
+      }
 
       const parsedInputs = (inputs || [])
         .filter((i: any) => Number(i.quantity) > 0)
@@ -440,7 +445,7 @@ export async function registerRoutes(
         .filter((o: any) => Number(o.quantity) > 0)
         .map((o: any) => ({ productId: Number(o.productId), quantity: Number(o.quantity), unitCost: o.unitCost ? Number(o.unitCost) : undefined }));
 
-      const result = await storage.registerProduction(Number(warehouseId), parsedInputs, parsedOutputs, productionDate || undefined);
+      const result = await storage.registerProduction(Number(warehouseId), parsedInputs, parsedOutputs, productionDate || undefined, destWarehouseId ? Number(destWarehouseId) : undefined);
       res.json({ message: "Produccion registrada", inputs: parsedInputs.length, outputs: parsedOutputs.length, batchNumber: result.batchNumber });
     } catch (err: any) {
       res.status(500).json({ error: err.message });

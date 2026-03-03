@@ -47,7 +47,7 @@ export interface IStorage {
   getMovements(limit?: number): Promise<MovementWithDetails[]>;
   createMovement(movement: InsertMovement): Promise<InventoryMovement>;
   transferInventory(items: { productId: number; quantity: number }[], sourceWarehouseId: number, destWarehouseId: number): Promise<void>;
-  registerProduction(warehouseId: number, inputs: { productId: number; quantity: number }[], outputs: { productId: number; quantity: number; unitCost?: number }[], productionDate?: string): Promise<{ batchNumber: string }>;
+  registerProduction(warehouseId: number, inputs: { productId: number; quantity: number }[], outputs: { productId: number; quantity: number; unitCost?: number }[], productionDate?: string, destWarehouseId?: number): Promise<{ batchNumber: string }>;
   registerSale(warehouseId: number, items: { productId: number; quantity: number }[], notes?: string): Promise<void>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
   getPurchaseOrders(): Promise<PurchaseOrderWithItems[]>;
@@ -371,8 +371,10 @@ export class DatabaseStorage implements IStorage {
     warehouseId: number,
     inputs: { productId: number; quantity: number }[],
     outputs: { productId: number; quantity: number; unitCost?: number }[],
-    productionDate?: string
+    productionDate?: string,
+    destWarehouseId?: number
   ): Promise<{ batchNumber: string }> {
+    const outputWarehouseId = destWarehouseId && destWarehouseId !== warehouseId ? destWarehouseId : warehouseId;
     const mfgDate = productionDate || new Date().toISOString().slice(0, 10);
     const dateStr = mfgDate.replace(/-/g, "");
 
@@ -421,7 +423,7 @@ export class DatabaseStorage implements IStorage {
       if (output.quantity <= 0) continue;
 
       const [existing] = await db.select().from(inventory)
-        .where(and(eq(inventory.warehouseId, warehouseId), eq(inventory.productId, output.productId)));
+        .where(and(eq(inventory.warehouseId, outputWarehouseId), eq(inventory.productId, output.productId)));
 
       if (existing) {
         await db.update(inventory)
@@ -433,7 +435,7 @@ export class DatabaseStorage implements IStorage {
           .where(eq(inventory.id, existing.id));
       } else {
         await db.insert(inventory).values({
-          warehouseId,
+          warehouseId: outputWarehouseId,
           productId: output.productId,
           quantity: String(output.quantity),
           unitCost: output.unitCost ? String(output.unitCost) : null,
@@ -443,7 +445,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       await db.insert(inventoryMovements).values({
-        warehouseId,
+        warehouseId: outputWarehouseId,
         productId: output.productId,
         movementType: "entrada",
         quantity: String(output.quantity),

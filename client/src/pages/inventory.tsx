@@ -495,6 +495,7 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
   const [inputs, setInputs] = useState<ProductionLine[]>([{ productId: "", quantity: "" }]);
   const [outputs, setOutputs] = useState<ProductionLine[]>([{ productId: "", quantity: "", unitCost: "" }]);
   const [productionDate, setProductionDate] = useState(new Date().toISOString().slice(0, 10));
+  const [destWarehouseId, setDestWarehouseId] = useState<string>("same");
   const { toast } = useToast();
 
   const { data: labInventory } = useQuery<InventoryWithDetails[]>({
@@ -511,6 +512,13 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
     enabled: open,
   });
 
+  const { data: allWarehouses } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
+    enabled: open,
+  });
+
+  const destOptions = (allWarehouses || []).filter((w) => w.id !== warehouseId);
+
   const availableInputProducts = labInventory?.filter((item) => Number(item.quantity) > 0) || [];
 
   const mutation = useMutation({
@@ -518,6 +526,7 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
       const res = await apiRequest("POST", "/api/inventory/production", {
         warehouseId,
         productionDate,
+        destWarehouseId: destWarehouseId && destWarehouseId !== "same" ? Number(destWarehouseId) : undefined,
         inputs: inputs.filter((i) => i.productId && Number(i.quantity) > 0).map((i) => ({
           productId: Number(i.productId),
           quantity: Number(i.quantity),
@@ -532,6 +541,9 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
     },
     onSuccess: (data: any) => {
       toast({ title: "Produccion registrada", description: `Lote: ${data.batchNumber}` });
+      if (destWarehouseId && destWarehouseId !== "same") {
+        queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      }
       resetAndClose();
       onSuccess();
     },
@@ -544,6 +556,7 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
     setInputs([{ productId: "", quantity: "" }]);
     setOutputs([{ productId: "", quantity: "", unitCost: "" }]);
     setProductionDate(new Date().toISOString().slice(0, 10));
+    setDestWarehouseId("same");
     setOpen(false);
   };
 
@@ -586,14 +599,30 @@ function ProductionDialog({ warehouseId, onSuccess }: { warehouseId: number; onS
           </DialogHeader>
 
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Fecha de Produccion</Label>
-              <Input
-                type="date"
-                value={productionDate}
-                onChange={(e) => setProductionDate(e.target.value)}
-                data-testid="input-production-date"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fecha de Produccion</Label>
+                <Input
+                  type="date"
+                  value={productionDate}
+                  onChange={(e) => setProductionDate(e.target.value)}
+                  data-testid="input-production-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Destino de Produccion</Label>
+                <Select value={destWarehouseId} onValueChange={setDestWarehouseId}>
+                  <SelectTrigger data-testid="select-dest-warehouse">
+                    <SelectValue placeholder="Mismo almacen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="same">Mismo almacen</SelectItem>
+                    {destOptions.map((w) => (
+                      <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-3">
