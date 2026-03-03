@@ -38,6 +38,7 @@ export interface IStorage {
   deleteCategory(id: number): Promise<void>;
   getSuppliers(): Promise<Supplier[]>;
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
+  updateSupplier(id: number, data: Partial<InsertSupplier>): Promise<Supplier>;
   getProducts(): Promise<(Product & { categoryName?: string | null; supplierName?: string | null })[]>;
   createProduct(product: InsertProduct): Promise<Product>;
   getInventory(filters?: { warehouseId?: number; lowStock?: boolean }): Promise<InventoryWithDetails[]>;
@@ -165,6 +166,12 @@ export class DatabaseStorage implements IStorage {
 
   async createSupplier(supplier: InsertSupplier): Promise<Supplier> {
     const [result] = await db.insert(suppliers).values(supplier).returning();
+    return result;
+  }
+
+  async updateSupplier(id: number, data: Partial<InsertSupplier>): Promise<Supplier> {
+    const [result] = await db.update(suppliers).set(data).where(eq(suppliers.id, id)).returning();
+    if (!result) throw new Error("Proveedor no encontrado");
     return result;
   }
 

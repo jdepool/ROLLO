@@ -194,6 +194,18 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/suppliers/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { name, contact, phone, email } = req.body;
+      if (!name) return res.status(400).json({ error: "El nombre es requerido" });
+      const result = await storage.updateSupplier(id, { name, contact, phone, email });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/products", async (_req, res) => {
     try {
       const result = await storage.getProducts();

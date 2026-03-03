@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Truck, Phone, Mail, User } from "lucide-react";
+import { Plus, Truck, Phone, Mail, User, Pencil } from "lucide-react";
 import type { Supplier } from "@shared/schema";
 
 function AddSupplierDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -95,6 +95,88 @@ function AddSupplierDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+function EditSupplierDialog({ supplier, onSuccess }: { supplier: Supplier; onSuccess: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(supplier.name);
+  const [contact, setContact] = useState(supplier.contact || "");
+  const [phone, setPhone] = useState(supplier.phone || "");
+  const [email, setEmail] = useState(supplier.email || "");
+  const { toast } = useToast();
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PUT", `/api/suppliers/${supplier.id}`, {
+        name,
+        contact: contact || null,
+        phone: phone || null,
+        email: email || null,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Proveedor actualizado" });
+      setOpen(false);
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleOpen = (v: boolean) => {
+    if (v) {
+      setName(supplier.name);
+      setContact(supplier.contact || "");
+      setPhone(supplier.phone || "");
+      setEmail(supplier.email || "");
+    }
+    setOpen(v);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" className="h-8 w-8" data-testid={`button-edit-supplier-${supplier.id}`}>
+          <Pencil className="w-3.5 h-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Editar Proveedor</DialogTitle>
+          <DialogDescription>Modifica los datos del proveedor</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div className="space-y-2">
+            <Label>Nombre de la Empresa</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del proveedor" data-testid="input-edit-supplier-name" />
+          </div>
+          <div className="space-y-2">
+            <Label>Persona de Contacto</Label>
+            <Input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Opcional" data-testid="input-edit-supplier-contact" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Telefono</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Opcional" data-testid="input-edit-supplier-phone" />
+            </div>
+            <div className="space-y-2">
+              <Label>Correo</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Opcional" data-testid="input-edit-supplier-email" />
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => mutation.mutate()}
+            disabled={!name || mutation.isPending}
+            data-testid="button-submit-edit-supplier"
+          >
+            {mutation.isPending ? "Guardando..." : "Guardar Cambios"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function SuppliersPage() {
   const { data: suppliers, isLoading } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -137,7 +219,8 @@ export default function SuppliersPage() {
                   <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <Truck className="w-5 h-5 text-primary" />
                   </div>
-                  <p className="font-semibold truncate">{sup.name}</p>
+                  <p className="font-semibold truncate flex-1">{sup.name}</p>
+                  <EditSupplierDialog supplier={sup} onSuccess={invalidate} />
                 </div>
                 <div className="space-y-1.5 text-sm text-muted-foreground">
                   {sup.contact && (
