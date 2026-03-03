@@ -43,6 +43,7 @@ export interface IStorage {
   getInventorySummary(): Promise<StockSummary>;
   addInventory(inv: InsertInventory): Promise<Inventory>;
   adjustInventory(id: number, quantity: string, reason?: string, lossReason?: string): Promise<void>;
+  updateInventoryMinStock(id: number, minStock: string): Promise<void>;
   getMovements(limit?: number): Promise<MovementWithDetails[]>;
   createMovement(movement: InsertMovement): Promise<InventoryMovement>;
   transferInventory(items: { productId: number; quantity: number }[], sourceWarehouseId: number, destWarehouseId: number): Promise<void>;
@@ -195,18 +196,18 @@ export class DatabaseStorage implements IStorage {
       ? sql`AND i.warehouse_id = ${filters.warehouseId}`
       : sql``;
     const lowStockFilter = filters?.lowStock
-      ? sql`AND CAST(i.quantity AS numeric) <= CAST(p.min_stock AS numeric)`
+      ? sql`AND CAST(i.quantity AS numeric) <= CAST(COALESCE(i.min_stock, p.min_stock) AS numeric)`
       : sql``;
 
     const result = await db.execute(sql`
       SELECT i.*,
-        p.name AS "productName", p.unit, p.min_stock AS "minStock", p.cost_price AS "costPrice",
+        p.name AS "productName", p.unit, COALESCE(i.min_stock, p.min_stock) AS "minStock", p.cost_price AS "costPrice",
         p.shelf_life_days AS "shelfLifeDays",
         pc.name AS "categoryName", pc.color AS "categoryColor", pc.icon AS "categoryIcon",
         s.name AS "supplierName",
         w.name AS "warehouseName",
         st.name AS "storeName",
-        CASE WHEN CAST(i.quantity AS numeric) <= CAST(p.min_stock AS numeric) THEN true ELSE false END AS "isLowStock",
+        CASE WHEN CAST(i.quantity AS numeric) <= CAST(COALESCE(i.min_stock, p.min_stock) AS numeric) THEN true ELSE false END AS "isLowStock",
         CASE WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '3 days' THEN true ELSE false END AS "expiringSoon"
       FROM inventory i
       JOIN products p ON p.id = i.product_id
@@ -225,7 +226,7 @@ export class DatabaseStorage implements IStorage {
       SELECT
         COUNT(DISTINCT i.product_id)::int AS "totalProducts",
         COALESCE(SUM(CAST(i.quantity AS numeric) * COALESCE(CAST(i.unit_cost AS numeric), CAST(p.cost_price AS numeric))), 0) AS "totalValue",
-        COUNT(CASE WHEN CAST(i.quantity AS numeric) <= CAST(p.min_stock AS numeric) AND CAST(i.quantity AS numeric) > 0 THEN 1 END)::int AS "lowStockCount",
+        COUNT(CASE WHEN CAST(i.quantity AS numeric) <= CAST(COALESCE(i.min_stock, p.min_stock) AS numeric) AND CAST(i.quantity AS numeric) > 0 THEN 1 END)::int AS "lowStockCount",
         COUNT(CASE WHEN CAST(i.quantity AS numeric) = 0 THEN 1 END)::int AS "outOfStockCount",
         COUNT(CASE WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '3 days' THEN 1 END)::int AS "expiringSoonCount"
       FROM inventory i
@@ -283,6 +284,12 @@ export class DatabaseStorage implements IStorage {
       notes,
       referenceType,
     });
+  }
+
+  async updateInventoryMinStock(id: number, minStock: string): Promise<void> {
+    const [existing] = await db.select().from(inventory).where(eq(inventory.id, id));
+    if (!existing) throw new Error("Inventory record not found");
+    await db.update(inventory).set({ minStock }).where(eq(inventory.id, id));
   }
 
   async getMovements(limit = 50): Promise<MovementWithDetails[]> {

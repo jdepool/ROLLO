@@ -51,6 +51,7 @@ export async function initDatabase() {
         warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
         product_id INTEGER NOT NULL REFERENCES products(id),
         quantity NUMERIC NOT NULL DEFAULT 0,
+        min_stock NUMERIC,
         unit_cost NUMERIC,
         expiry_date DATE,
         manufacture_date DATE,
@@ -118,6 +119,15 @@ export async function initDatabase() {
 
     await db.execute(sql`
       ALTER TABLE warehouses ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'almacen';
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE inventory ADD COLUMN IF NOT EXISTS min_stock NUMERIC;
+    `);
+
+    await db.execute(sql`
+      UPDATE inventory i SET min_stock = p.min_stock
+      FROM products p WHERE i.product_id = p.id AND i.min_stock IS NULL;
     `);
 
     console.log("Database tables initialized");

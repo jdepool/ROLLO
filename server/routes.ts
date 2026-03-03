@@ -351,6 +351,18 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/inventory/:id/min-stock", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { minStock } = req.body;
+      if (minStock === undefined || minStock === null) return res.status(400).json({ error: "Se requiere un stock minimo" });
+      await storage.updateInventoryMinStock(id, String(minStock));
+      res.json({ message: "Stock minimo actualizado" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/inventory/losses", async (_req, res) => {
     try {
       const result = await storage.getLossSummary();

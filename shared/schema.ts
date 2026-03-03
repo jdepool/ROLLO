@@ -50,6 +50,7 @@ export const inventory = pgTable("inventory", {
   warehouseId: integer("warehouse_id").notNull().references(() => warehouses.id),
   productId: integer("product_id").notNull().references(() => products.id),
   quantity: numeric("quantity").notNull().default("0"),
+  minStock: numeric("min_stock"),
   unitCost: numeric("unit_cost"),
   expiryDate: date("expiry_date"),
   manufactureDate: date("manufacture_date"),

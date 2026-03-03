@@ -209,6 +209,7 @@ const LOSS_REASONS = [
 function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
   const [newQty, setNewQty] = useState(String(Number(item.quantity)));
+  const [newMinStock, setNewMinStock] = useState(String(Number(item.minStock || 0)));
   const [lossReason, setLossReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [notes, setNotes] = useState("");
@@ -231,6 +232,9 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
         body.reason = notes || undefined;
       }
       await apiRequest("PUT", `/api/inventory/${item.id}/adjust`, body);
+      if (String(Number(newMinStock)) !== String(Number(item.minStock || 0))) {
+        await apiRequest("PUT", `/api/inventory/${item.id}/min-stock`, { minStock: newMinStock });
+      }
     },
     onSuccess: () => {
       toast({ title: "Stock ajustado" });
@@ -246,6 +250,7 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
     setOpen(v);
     if (v) {
       setNewQty(String(Number(item.quantity)));
+      setNewMinStock(String(Number(item.minStock || 0)));
       setLossReason("");
       setCustomReason("");
       setNotes("");
@@ -266,7 +271,7 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label>Actual: {currentQty} {item.unit}</Label>
+            <Label>Cantidad actual: {currentQty} {item.unit}</Label>
             <Input
               type="number"
               min="0"
@@ -274,6 +279,17 @@ function AdjustDialog({ item, onSuccess }: { item: InventoryWithDetails; onSucce
               value={newQty}
               onChange={(e) => setNewQty(e.target.value)}
               data-testid="input-adjust-quantity"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Stock Minimo</Label>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={newMinStock}
+              onChange={(e) => setNewMinStock(e.target.value)}
+              data-testid="input-adjust-min-stock"
             />
           </div>
           {isDecrease ? (
@@ -842,6 +858,7 @@ export default function InventoryPage() {
                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Producto</th>
                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Almacen</th>
                     <th className="text-right px-5 py-3 font-medium text-muted-foreground">Cant.</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Stock Min.</th>
                     <th className="text-right px-5 py-3 font-medium text-muted-foreground">Costo Unit.</th>
                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Lote</th>
                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Vencimiento</th>
@@ -863,6 +880,9 @@ export default function InventoryPage() {
                       <td className="px-5 py-3 text-muted-foreground">{item.warehouseName}</td>
                       <td className="px-5 py-3 text-right font-mono font-semibold">
                         {Number(item.quantity)} <span className="text-muted-foreground font-normal">{item.unit}</span>
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-muted-foreground" data-testid={`text-min-stock-${item.id}`}>
+                        {Number(item.minStock || 0)}
                       </td>
                       <td className="px-5 py-3 text-right font-mono">
                         {(item as any).unit_cost ? `$${Number((item as any).unit_cost).toFixed(2)}` : "-"}
