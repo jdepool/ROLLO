@@ -311,7 +311,7 @@ export async function registerRoutes(
   app.get("/api/inventory", async (req, res) => {
     try {
       const filters: any = {};
-      if (req.query.warehouse_id) filters.warehouseId = Number(req.query.warehouse_id);
+      if (req.query.warehouseId || req.query.warehouse_id) filters.warehouseId = Number(req.query.warehouseId || req.query.warehouse_id);
       if (req.query.low_stock === "true") filters.lowStock = true;
       const result = await storage.getInventory(Object.keys(filters).length ? filters : undefined);
       res.json(result);
