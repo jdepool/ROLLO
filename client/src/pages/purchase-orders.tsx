@@ -980,12 +980,11 @@ export default function PurchaseOrdersPage() {
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-purchase-orders-title">Ordenes de Compra</h1>
+          <h1 className="text-2xl font-bold" data-testid="text-purchase-orders-title">Compras</h1>
           <p className="text-sm text-muted-foreground mt-1">Sube facturas y actualiza el inventario automaticamente</p>
         </div>
         <CreatePODialog onSuccess={() => {}} />
       </div>
-
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
