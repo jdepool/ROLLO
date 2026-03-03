@@ -287,7 +287,10 @@ export class DatabaseStorage implements IStorage {
 
   async getMovements(limit = 50): Promise<MovementWithDetails[]> {
     const result = await db.execute(sql`
-      SELECT im.*,
+      SELECT im.id, im.warehouse_id AS "warehouseId", im.product_id AS "productId",
+        im.movement_type AS "movementType", im.quantity, im.unit_cost AS "unitCost",
+        im.notes, im.created_by AS "createdBy", im.reference_type AS "referenceType",
+        im.created_at AS "createdAt",
         p.name AS "productName", p.unit,
         w.name AS "warehouseName"
       FROM inventory_movements im

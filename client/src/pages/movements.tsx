@@ -22,11 +22,12 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRightLeft, ArrowDown, ArrowUp, RefreshCw, Loader2, Check, Repeat2, AlertTriangle, TrendingDown } from "lucide-react";
+import { ArrowRightLeft, ArrowDown, ArrowUp, RefreshCw, Loader2, Check, Repeat2, AlertTriangle, TrendingDown, ShoppingBag } from "lucide-react";
 import type { MovementWithDetails, Warehouse, InventoryWithDetails, LossSummary } from "@shared/schema";
 
 function MovementIcon({ type, referenceType }: { type: string; referenceType?: string | null }) {
   if (referenceType === "merma") return <AlertTriangle className="w-4 h-4 text-orange-500" />;
+  if (referenceType === "venta") return <ShoppingBag className="w-4 h-4 text-green-500" />;
   if (type === "entrada") return <ArrowDown className="w-4 h-4 text-emerald-500" />;
   if (type === "salida") return <ArrowUp className="w-4 h-4 text-red-500" />;
   return <RefreshCw className="w-4 h-4 text-blue-500" />;
@@ -35,6 +36,9 @@ function MovementIcon({ type, referenceType }: { type: string; referenceType?: s
 function MovementTypeBadge({ type, referenceType }: { type: string; referenceType?: string | null }) {
   if (referenceType === "merma") {
     return <Badge variant="destructive" className="text-xs">Merma</Badge>;
+  }
+  if (referenceType === "venta") {
+    return <Badge className="text-xs bg-green-600">Venta</Badge>;
   }
   const cfg: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
     entrada: { label: "Entrada", variant: "default" },
@@ -410,8 +414,92 @@ function MermasSection() {
   );
 }
 
+function VentasSection() {
+  const { data: movements, isLoading } = useQuery<MovementWithDetails[]>({
+    queryKey: ["/api/inventory/movements"],
+  });
+
+  const salesMovements = useMemo(() => {
+    return movements?.filter(m => m.referenceType === "venta") || [];
+  }, [movements]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-5">
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!salesMovements.length) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <ShoppingBag className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-muted-foreground text-sm">No hay ventas registradas</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Producto</th>
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Almacen</th>
+                <th className="text-right px-5 py-3 font-medium text-muted-foreground">Cantidad</th>
+                <th className="text-right px-5 py-3 font-medium text-muted-foreground">Costo Unit.</th>
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Notas</th>
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Fecha</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {salesMovements.map((mov) => (
+                <tr key={mov.id} data-testid={`row-sale-${mov.id}`}>
+                  <td className="px-5 py-3 font-medium">{mov.productName}</td>
+                  <td className="px-5 py-3 text-muted-foreground">{mov.warehouseName || "-"}</td>
+                  <td className="px-5 py-3 text-right">
+                    <span className="font-mono font-semibold text-red-600 dark:text-red-400">
+                      {Math.abs(Number(mov.quantity))} {mov.unit}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-right font-mono text-muted-foreground">
+                    {mov.unitCost ? `$${Number(mov.unitCost).toFixed(2)}` : "-"}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground text-xs max-w-[200px] truncate">
+                    {mov.notes || "-"}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                    {mov.createdAt
+                      ? new Date(mov.createdAt).toLocaleDateString("es-MX", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function MovementsPage() {
-  const [activeTab, setActiveTab] = useState<"movimientos" | "mermas">("movimientos");
+  const [activeTab, setActiveTab] = useState<"movimientos" | "mermas" | "ventas">("movimientos");
   const { data: movements, isLoading } = useQuery<MovementWithDetails[]>({
     queryKey: ["/api/inventory/movements"],
   });
@@ -438,6 +526,14 @@ export default function MovementsPage() {
           Movimientos
         </button>
         <button
+          onClick={() => setActiveTab("ventas")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "ventas" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          data-testid="tab-ventas"
+        >
+          <ShoppingBag className="w-4 h-4 inline mr-1.5" />
+          Ventas
+        </button>
+        <button
           onClick={() => setActiveTab("mermas")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "mermas" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           data-testid="tab-mermas"
@@ -447,7 +543,7 @@ export default function MovementsPage() {
         </button>
       </div>
 
-      {activeTab === "mermas" ? <MermasSection /> : (
+      {activeTab === "mermas" ? <MermasSection /> : activeTab === "ventas" ? <VentasSection /> : (
       <>
 
       <Card>
