@@ -67,6 +67,7 @@ Preferred communication style: Simple, everyday language.
 - `PUT /api/inventory/:id/adjust` — Adjust inventory quantity (supports `lossReason` for merma tracking)
 - `PUT /api/inventory/:id/min-stock` — Update per-warehouse minimum stock for an inventory record
 - `GET /api/inventory/losses` — Per-product loss/merma summary with loss percentages
+- `GET /api/inventory/mermas` — Individual merma records with parsed reason, product, warehouse, quantity, and date
 - `GET /api/inventory/movements` — Movement history
 - `POST /api/inventory/movements` — Record a new movement
 - `POST /api/inventory/transfer` — Transfer products between warehouses (creates paired salida/entrada movements)

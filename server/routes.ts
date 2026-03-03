@@ -372,6 +372,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/inventory/mermas", async (_req, res) => {
+    try {
+      const result = await storage.getMermaRecords();
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/inventory/movements", async (req, res) => {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 50;

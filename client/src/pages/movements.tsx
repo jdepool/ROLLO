@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRightLeft, ArrowDown, ArrowUp, RefreshCw, Loader2, Check, Repeat2, AlertTriangle, TrendingDown, ShoppingBag } from "lucide-react";
-import type { MovementWithDetails, Warehouse, InventoryWithDetails, LossSummary } from "@shared/schema";
+import type { MovementWithDetails, Warehouse, InventoryWithDetails, LossSummary, MermaRecord } from "@shared/schema";
 
 function MovementIcon({ type, referenceType }: { type: string; referenceType?: string | null }) {
   if (referenceType === "merma") return <AlertTriangle className="w-4 h-4 text-orange-500" />;
@@ -342,9 +342,15 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
 }
 
 function MermasSection() {
-  const { data: losses, isLoading } = useQuery<LossSummary[]>({
+  const { data: losses, isLoading: loadingLosses } = useQuery<LossSummary[]>({
     queryKey: ["/api/inventory/losses"],
   });
+
+  const { data: mermaRecords, isLoading: loadingRecords } = useQuery<MermaRecord[]>({
+    queryKey: ["/api/inventory/mermas"],
+  });
+
+  const isLoading = loadingLosses || loadingRecords;
 
   if (isLoading) {
     return (
@@ -359,7 +365,7 @@ function MermasSection() {
     );
   }
 
-  if (!losses?.length) {
+  if (!losses?.length && !mermaRecords?.length) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
@@ -371,46 +377,95 @@ function MermasSection() {
   }
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Producto</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Unidad</th>
-                <th className="text-right px-5 py-3 font-medium text-muted-foreground">Total Perdido</th>
-                <th className="text-right px-5 py-3 font-medium text-muted-foreground">Total Ingresado</th>
-                <th className="text-right px-5 py-3 font-medium text-muted-foreground">% Merma</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {losses.map((loss) => (
-                <tr key={loss.productId} data-testid={`row-loss-${loss.productId}`}>
-                  <td className="px-5 py-3 font-medium">{loss.productName}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{loss.unit}</td>
-                  <td className="px-5 py-3 text-right font-mono text-red-600 dark:text-red-400">
-                    {Number(loss.totalLost).toFixed(2)}
-                  </td>
-                  <td className="px-5 py-3 text-right font-mono text-muted-foreground">
-                    {Number(loss.totalEntries).toFixed(2)}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <Badge
-                      variant={Number(loss.lossPercentage) > 10 ? "destructive" : "outline"}
-                      className="font-mono"
-                      data-testid={`badge-loss-pct-${loss.productId}`}
-                    >
-                      {Number(loss.lossPercentage).toFixed(1)}%
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      {losses && losses.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">Resumen por Producto</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Producto</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Unidad</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Total Perdido</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Total Ingresado</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">% Merma</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {losses.map((loss) => (
+                    <tr key={loss.productId} data-testid={`row-loss-${loss.productId}`}>
+                      <td className="px-5 py-3 font-medium">{loss.productName}</td>
+                      <td className="px-5 py-3 text-muted-foreground">{loss.unit}</td>
+                      <td className="px-5 py-3 text-right font-mono text-red-600 dark:text-red-400">
+                        {Number(loss.totalLost).toFixed(2)}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-muted-foreground">
+                        {Number(loss.totalEntries).toFixed(2)}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <Badge
+                          variant={Number(loss.lossPercentage) > 10 ? "destructive" : "outline"}
+                          className="font-mono"
+                          data-testid={`badge-loss-pct-${loss.productId}`}
+                        >
+                          {Number(loss.lossPercentage).toFixed(1)}%
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {mermaRecords && mermaRecords.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">Detalle de Mermas</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Fecha</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Producto</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Almacen</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Cantidad</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Razon</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {mermaRecords.map((record) => (
+                    <tr key={record.id} data-testid={`row-merma-${record.id}`}>
+                      <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">
+                        {new Date(record.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="px-5 py-3 font-medium">{record.productName}</td>
+                      <td className="px-5 py-3 text-muted-foreground">{record.warehouseName}</td>
+                      <td className="px-5 py-3 text-right font-mono text-red-600 dark:text-red-400">
+                        -{Number(record.quantity).toFixed(2)} {record.unit}
+                      </td>
+                      <td className="px-5 py-3">
+                        <Badge variant="outline" data-testid={`badge-merma-reason-${record.id}`}>
+                          {record.reason}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 

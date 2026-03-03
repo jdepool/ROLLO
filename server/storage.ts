@@ -16,6 +16,7 @@ import {
   type PurchaseOrderItem, type InsertPurchaseOrderItem,
   type PurchaseOrderWithItems,
   type LossSummary,
+  type MermaRecord,
 } from "@shared/schema";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -56,6 +57,7 @@ export interface IStorage {
   updatePurchaseOrderStatus(id: number, status: string): Promise<void>;
   confirmPurchaseOrder(id: number): Promise<void>;
   getLossSummary(): Promise<LossSummary[]>;
+  getMermaRecords(): Promise<MermaRecord[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -263,16 +265,16 @@ export class DatabaseStorage implements IStorage {
     await db.update(inventory).set({ quantity }).where(eq(inventory.id, id));
 
     const isLoss = diff < 0;
-    const referenceType = isLoss && lossReason ? "merma" : "manual_adjustment";
+    const referenceType = isLoss ? "merma" : "manual_adjustment";
+    const reasonLabels: Record<string, string> = {
+      producto_expiro: "Producto Expiró",
+      producto_danado: "Producto Dañado",
+      accidente: "Accidente",
+      otros: "Otros",
+    };
     let notes = reason;
-    if (isLoss && lossReason) {
-      const reasonLabels: Record<string, string> = {
-        producto_expiro: "Producto Expiró",
-        producto_danado: "Producto Dañado",
-        accidente: "Accidente",
-        otros: "Otros",
-      };
-      const label = reasonLabels[lossReason] || lossReason;
+    if (isLoss) {
+      const label = lossReason ? (reasonLabels[lossReason] || lossReason) : "Ajuste manual";
       notes = reason ? `Merma: ${label} - ${reason}` : `Merma: ${label}`;
     }
 
@@ -665,6 +667,45 @@ export class DatabaseStorage implements IStorage {
       totalEntries: Number(row.totalEntries),
       lossPercentage: Number(row.lossPercentage),
     }));
+  }
+
+  async getMermaRecords(): Promise<MermaRecord[]> {
+    const result = await db.execute(sql`
+      SELECT im.id, im.product_id AS "productId",
+        p.name AS "productName", p.unit,
+        w.name AS "warehouseName",
+        ABS(CAST(im.quantity AS numeric)) AS "quantity",
+        im.notes,
+        im.created_at AS "createdAt"
+      FROM inventory_movements im
+      JOIN products p ON p.id = im.product_id
+      JOIN warehouses w ON w.id = im.warehouse_id
+      WHERE im.reference_type = 'merma'
+      ORDER BY im.created_at DESC
+      LIMIT 200
+    `);
+    return result.rows.map((row: any) => {
+      let reason = "Ajuste manual";
+      if (row.notes) {
+        const match = row.notes.match(/^Merma:\s*(.+?)(?:\s*-\s*(.+))?$/);
+        if (match) {
+          reason = match[2] ? `${match[1]} - ${match[2]}` : match[1];
+        } else {
+          reason = row.notes;
+        }
+      }
+      return {
+        id: Number(row.id),
+        productId: Number(row.productId),
+        productName: row.productName,
+        unit: row.unit,
+        warehouseName: row.warehouseName,
+        quantity: Number(row.quantity),
+        reason,
+        notes: row.notes,
+        createdAt: row.createdAt,
+      };
+    });
   }
 }
 

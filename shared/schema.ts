@@ -170,4 +170,16 @@ export type LossSummary = {
   lossPercentage: number;
 };
 
+export type MermaRecord = {
+  id: number;
+  productId: number;
+  productName: string;
+  unit: string;
+  warehouseName: string;
+  quantity: number;
+  reason: string;
+  notes: string | null;
+  createdAt: string;
+};
+
 export * from "./models/chat";
