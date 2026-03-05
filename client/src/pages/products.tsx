@@ -23,7 +23,18 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Package, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Plus, Search, Package, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import type { Product, ProductCategory, Supplier } from "@shared/schema";
 
 const PRESET_UNITS = [
@@ -439,6 +450,175 @@ function BulkUploadDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+function EditProductDialog({ product, onSuccess }: { product: Product & { categoryName?: string; supplierName?: string }; onSuccess: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(product.name);
+  const [unit, setUnit] = useState(product.unit);
+  const [minStock, setMinStock] = useState(String(product.minStock));
+  const [costPrice, setCostPrice] = useState(String(product.costPrice));
+  const [shelfLifeDays, setShelfLifeDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : "");
+  const [categoryId, setCategoryId] = useState(product.categoryId ? String(product.categoryId) : "");
+  const [supplierId, setSupplierId] = useState(product.supplierId ? String(product.supplierId) : "");
+  const { toast } = useToast();
+
+  const { data: categories } = useQuery<ProductCategory[]>({ queryKey: ["/api/categories"] });
+  const { data: suppliers } = useQuery<Supplier[]>({ queryKey: ["/api/suppliers"] });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PUT", `/api/products/${product.id}`, {
+        name, unit, minStock, costPrice,
+        shelfLifeDays: shelfLifeDays ? Number(shelfLifeDays) : null,
+        categoryId: categoryId ? Number(categoryId) : null,
+        supplierId: supplierId ? Number(supplierId) : null,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Producto actualizado" });
+      setOpen(false);
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleOpen = (v: boolean) => {
+    if (v) {
+      setName(product.name);
+      setUnit(product.unit);
+      setMinStock(String(product.minStock));
+      setCostPrice(String(product.costPrice));
+      setShelfLifeDays(product.shelfLifeDays ? String(product.shelfLifeDays) : "");
+      setCategoryId(product.categoryId ? String(product.categoryId) : "");
+      setSupplierId(product.supplierId ? String(product.supplierId) : "");
+    }
+    setOpen(v);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" className="h-8 w-8" data-testid={`button-edit-product-${product.id}`}>
+          <Pencil className="w-3.5 h-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Editar Producto</DialogTitle>
+          <DialogDescription>Modifica los datos del producto</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div className="space-y-2">
+            <Label>Nombre</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="input-edit-product-name" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Unidad</Label>
+              <UnitComboBox value={unit} onChange={setUnit} testId="select-edit-unit" />
+            </div>
+            <div className="space-y-2">
+              <Label>Stock Minimo</Label>
+              <Input type="number" min="0" value={minStock} onChange={(e) => setMinStock(e.target.value)} data-testid="input-edit-min-stock" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Precio de Costo</Label>
+              <Input type="number" min="0" step="0.01" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} data-testid="input-edit-cost-price" />
+            </div>
+            <div className="space-y-2">
+              <Label>Vida Util (dias)</Label>
+              <Input type="number" min="0" value={shelfLifeDays} onChange={(e) => setShelfLifeDays(e.target.value)} placeholder="Opcional" data-testid="input-edit-shelf-life" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger data-testid="select-edit-category">
+                  <SelectValue placeholder="Opcional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories?.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Proveedor</Label>
+              <Select value={supplierId} onValueChange={setSupplierId}>
+                <SelectTrigger data-testid="select-edit-supplier">
+                  <SelectValue placeholder="Opcional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers?.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => mutation.mutate()}
+            disabled={!name || mutation.isPending}
+            data-testid="button-submit-edit-product"
+          >
+            {mutation.isPending ? "Guardando..." : "Guardar Cambios"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteProductButton({ product, onSuccess }: { product: Product; onSuccess: () => void }) {
+  const { toast } = useToast();
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/products/${product.id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Producto eliminado" });
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" data-testid={`button-delete-product-${product.id}`}>
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Eliminar Producto</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se eliminara "{product.name}" junto con todo su inventario y movimientos asociados. Esta accion no se puede deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => mutation.mutate()}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            data-testid="button-confirm-delete-product"
+          >
+            {mutation.isPending ? "Eliminando..." : "Eliminar"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const { data: products, isLoading } = useQuery<(Product & { categoryName?: string; supplierName?: string })[]>({
@@ -506,6 +686,7 @@ export default function ProductsPage() {
                     <th className="text-right px-5 py-3 font-medium text-muted-foreground">Stock Min.</th>
                     <th className="text-right px-5 py-3 font-medium text-muted-foreground">Costo</th>
                     <th className="text-right px-5 py-3 font-medium text-muted-foreground">Vida Util</th>
+                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -525,6 +706,12 @@ export default function ProductsPage() {
                       <td className="px-5 py-3 text-right font-mono">${Number(p.costPrice).toFixed(2)}</td>
                       <td className="px-5 py-3 text-right text-muted-foreground">
                         {p.shelfLifeDays ? `${p.shelfLifeDays}d` : "-"}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <EditProductDialog product={p} onSuccess={invalidate} />
+                          <DeleteProductButton product={p} onSuccess={invalidate} />
+                        </div>
                       </td>
                     </tr>
                   ))}

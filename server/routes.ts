@@ -226,6 +226,33 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/products/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { name, unit, minStock, costPrice, shelfLifeDays, categoryId, supplierId } = req.body;
+      if (!name) return res.status(400).json({ error: "El nombre es requerido" });
+      const result = await storage.updateProduct(id, {
+        name, unit, minStock, costPrice,
+        shelfLifeDays: shelfLifeDays !== undefined ? shelfLifeDays : null,
+        categoryId: categoryId !== undefined ? categoryId : null,
+        supplierId: supplierId !== undefined ? supplierId : null,
+      });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/products/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      await storage.deleteProduct(id);
+      res.json({ message: "Producto eliminado" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/products/bulk-upload", async (req, res) => {
     try {
       const { fileData, fileName } = req.body;

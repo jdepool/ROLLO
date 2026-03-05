@@ -41,6 +41,8 @@ export interface IStorage {
   updateSupplier(id: number, data: Partial<InsertSupplier>): Promise<Supplier>;
   getProducts(): Promise<(Product & { categoryName?: string | null; supplierName?: string | null })[]>;
   createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product>;
+  deleteProduct(id: number): Promise<void>;
   getInventory(filters?: { warehouseId?: number; lowStock?: boolean }): Promise<InventoryWithDetails[]>;
   getInventorySummary(): Promise<StockSummary>;
   addInventory(inv: InsertInventory): Promise<Inventory>;
@@ -198,6 +200,18 @@ export class DatabaseStorage implements IStorage {
   async createProduct(product: InsertProduct): Promise<Product> {
     const [result] = await db.insert(products).values(product).returning();
     return result;
+  }
+
+  async updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product> {
+    const [result] = await db.update(products).set(data).where(eq(products.id, id)).returning();
+    if (!result) throw new Error("Producto no encontrado");
+    return result;
+  }
+
+  async deleteProduct(id: number): Promise<void> {
+    await db.delete(inventoryMovements).where(eq(inventoryMovements.productId, id));
+    await db.delete(inventory).where(eq(inventory.productId, id));
+    await db.delete(products).where(eq(products.id, id));
   }
 
   async getInventory(filters?: { warehouseId?: number; lowStock?: boolean }): Promise<InventoryWithDetails[]> {
